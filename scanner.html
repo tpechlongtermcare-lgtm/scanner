@@ -56,6 +56,15 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',san
 .loc-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .loc-btn{padding:8px 16px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;font-size:0.85rem;font-weight:600;color:#555;cursor:pointer;transition:all .15s}
 .loc-btn.active{border-color:#1976D2;background:#1976D2;color:#fff;box-shadow:0 2px 8px rgba(25,118,210,0.3)}
+/* Current location */
+.cur-loc{background:#E3F2FD;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.88rem;color:#1565C0;display:flex;align-items:center;gap:6px}
+.cur-loc strong{color:#0D47A1}
+.cur-loc.no-loc{background:#FFF3E0;color:#E65100}
+.cur-loc-icon{font-size:1rem}
+/* Custom location input */
+.loc-custom{margin-top:6px;margin-bottom:4px}
+.loc-input{width:100%;padding:10px 14px;border:2px solid #e0e0e0;border-radius:12px;font-size:0.9rem;font-family:inherit;transition:border-color .2s;background:#FAFAFA}
+.loc-input:focus{outline:none;border-color:#1976D2;background:#fff}
 .chk-box{background:linear-gradient(135deg,#FFF5F5,#FFF0F0);border-radius:14px;padding:12px 14px;margin:10px 0;border:1px solid #FFCDD2}
 .chk-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:0.9rem}
 .chk-row input[type=checkbox]{width:22px;height:22px;accent-color:#4CAF50;cursor:pointer}
@@ -266,6 +275,14 @@ function showConfirmCard(item) {
   currentItem._isAED = isAED;
   currentItem._isFire = isFire;
 
+  // 顯示目前位置
+  var curLocHtml = '';
+  if (item.location) {
+    curLocHtml = '<div class="cur-loc"><span class="cur-loc-icon">📍</span> 目前位置：<strong>' + item.location + '</strong></div>';
+  } else {
+    curLocHtml = '<div class="cur-loc no-loc"><span class="cur-loc-icon">⚠️</span> 尚未設定位置</div>';
+  }
+
   var btns = locations.map(function(l) {
     return '<button class="loc-btn' + (l === currentItem._loc ? ' active' : '') + '" onclick="pickLoc(this,\'' + l.replace(/'/g, "\\'") + '\')">' + l + '</button>';
   }).join('');
@@ -286,8 +303,12 @@ function showConfirmCard(item) {
     '<div class="card">' +
       '<h3>' + item.name + '</h3>' +
       '<div class="item-id">' + item.id + '</div>' +
-      '<div class="loc-label">位置 *必填</div>' +
+      curLocHtml +
+      '<div class="loc-label">選擇位置 *必填</div>' +
       '<div class="loc-grid">' + btns + '</div>' +
+      '<div class="loc-custom">' +
+        '<input type="text" id="locInput" class="loc-input" placeholder="或輸入其他位置..." value="" oninput="onLocInput(this)">' +
+      '</div>' +
       checks +
       '<div class="btn-row">' +
         '<button class="btn-action btn-fault" onclick="goRepair()">✂ 故障</button>' +
@@ -303,6 +324,22 @@ function pickLoc(el, loc) {
   currentItem._loc = loc;
   document.querySelectorAll('.loc-btn').forEach(function(b) { b.classList.remove('active'); });
   el.classList.add('active');
+  // 清空自訂輸入
+  var input = document.getElementById('locInput');
+  if (input) input.value = '';
+  updateOkBtn();
+}
+
+function onLocInput(el) {
+  var val = el.value.trim();
+  if (val) {
+    // 有自訂輸入 → 取消按鈕選取
+    currentItem._loc = val;
+    document.querySelectorAll('.loc-btn').forEach(function(b) { b.classList.remove('active'); });
+  } else {
+    // 清空 → 位置變空
+    currentItem._loc = '';
+  }
   updateOkBtn();
 }
 
