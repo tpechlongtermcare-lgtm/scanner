@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>QR 掃描器 - 興岩點班系統</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;overflow-x:hidden;min-height:100vh;min-height:100dvh}
+
+/* Top bar */
+.top-bar{background:rgba(0,0,0,0.88);padding:env(safe-area-inset-top,8px) 16px 8px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:10;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.top-bar h3{font-size:0.95rem;font-weight:700}
+.badge{background:rgba(76,175,80,0.3);padding:3px 12px;border-radius:12px;font-size:0.8rem;color:#81C784}
+.btn-close{background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* Camera */
+#reader{width:100vw;height:100vh;height:100dvh}
+#reader video{object-fit:cover!important;width:100%!important;height:100%!important}
+
+/* Scan frame */
+.scan-frame{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:260px;z-index:5;pointer-events:none;display:none}
+.corner{position:absolute;width:28px;height:28px;border-color:#4CAF50;border-style:solid;border-width:0}
+.c-tl{top:0;left:0;border-top-width:4px;border-left-width:4px;border-radius:6px 0 0 0}
+.c-tr{top:0;right:0;border-top-width:4px;border-right-width:4px;border-radius:0 6px 0 0}
+.c-bl{bottom:0;left:0;border-bottom-width:4px;border-left-width:4px;border-radius:0 0 0 6px}
+.c-br{bottom:0;right:0;border-bottom-width:4px;border-right-width:4px;border-radius:0 0 6px 0}
+.laser{position:absolute;top:0;left:10%;right:10%;height:3px;background:linear-gradient(90deg,transparent,#4CAF50,transparent);animation:laserAni 2s ease-in-out infinite}
+@keyframes laserAni{0%{top:0}50%{top:calc(100% - 3px)}100%{top:0}}
+
+/* Status bar */
+.status-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.88);padding:14px 16px env(safe-area-inset-bottom,14px);text-align:center;z-index:10;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.hint{font-size:0.9rem;color:rgba(255,255,255,0.55)}
+
+/* ===== Feedback overlay ===== */
+.fb-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fbIn .2s ease}
+@keyframes fbIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
+.fb-overlay.success{background:rgba(46,125,50,0.93)}
+.fb-overlay.warning{background:rgba(245,124,0,0.93)}
+.fb-overlay.error{background:rgba(211,47,47,0.93)}
+.fb-overlay.info{background:rgba(30,30,30,0.93)}
+.fb-icon{font-size:5rem;animation:iconPop .4s ease}
+@keyframes iconPop{0%{transform:scale(0) rotate(-10deg)}60%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
+.fb-text{font-size:1.3rem;font-weight:700;margin-top:14px;text-align:center;padding:0 24px}
+.fb-sub{font-size:0.85rem;margin-top:8px;opacity:0.75}
+
+/* ===== Confirm card ===== */
+.card-wrap{position:fixed;top:0;left:0;right:0;bottom:0;z-index:25;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;animation:slideUp .3s cubic-bezier(0.2,0.8,0.3,1)}
+@keyframes slideUp{from{opacity:0}to{opacity:1}}
+.card{background:#fff;color:#333;width:100%;max-width:500px;border-radius:20px 20px 0 0;padding:24px 20px env(safe-area-inset-bottom,20px);max-height:82vh;overflow-y:auto;animation:cardSlide .3s cubic-bezier(0.2,0.8,0.3,1)}
+@keyframes cardSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.card h3{font-size:1.15rem;font-weight:800;text-align:center;margin-bottom:4px}
+.card .item-id{font-size:0.78rem;color:#999;text-align:center;font-family:monospace;background:#f5f5f5;padding:4px 12px;border-radius:8px;display:inline-block;margin:0 auto 14px;width:100%}
+.loc-label{font-size:0.85rem;font-weight:700;color:#E53935;margin-bottom:8px}
+.loc-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.loc-btn{padding:8px 16px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;font-size:0.85rem;font-weight:600;color:#555;cursor:pointer;transition:all .15s}
+.loc-btn.active{border-color:#1976D2;background:#1976D2;color:#fff;box-shadow:0 2px 8px rgba(25,118,210,0.3)}
+.chk-box{background:linear-gradient(135deg,#FFF5F5,#FFF0F0);border-radius:14px;padding:12px 14px;margin:10px 0;border:1px solid #FFCDD2}
+.chk-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:0.9rem}
+.chk-row input[type=checkbox]{width:22px;height:22px;accent-color:#4CAF50;cursor:pointer}
+.chk-row label{cursor:pointer;flex:1}
+.btn-row{display:flex;gap:10px;margin-top:16px}
+.btn-action{flex:1;padding:14px;border:none;border-radius:16px;font-size:1rem;font-weight:700;cursor:pointer;transition:transform .1s}
+.btn-action:active{transform:scale(0.97)}
+.btn-ok{background:linear-gradient(135deg,#E8A04C,#D4842A);color:#fff;box-shadow:0 4px 12px rgba(212,132,42,0.3)}
+.btn-ok:disabled{opacity:0.35;box-shadow:none}
+.btn-fault{background:#fff;border:2px solid #EF6C00;color:#EF6C00;flex:0.5}
+.btn-cancel{background:none;border:none;color:#aaa;font-size:0.9rem;width:100%;padding:10px;margin-top:6px;cursor:pointer}
+.spinner{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== Repair card ===== */
+.repair-card{background:#fff;color:#333;width:100%;max-width:500px;border-radius:20px 20px 0 0;padding:24px 20px env(safe-area-inset-bottom,20px);animation:cardSlide .3s cubic-bezier(0.2,0.8,0.3,1)}
+.repair-card h3{font-size:1.1rem;font-weight:800;text-align:center;margin-bottom:14px;color:#E53935}
+.repair-input{width:100%;padding:14px;border:2px solid #e0e0e0;border-radius:14px;font-size:1rem;margin-bottom:12px;resize:none;font-family:inherit;transition:border-color .2s}
+.repair-input:focus{outline:none;border-color:#E53935}
+.repair-btn{width:100%;padding:14px;border:none;border-radius:16px;font-size:1rem;font-weight:700;background:linear-gradient(135deg,#E53935,#C62828);color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(229,57,53,0.3)}
+
+/* ===== Start screen ===== */
+.start-screen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;background:linear-gradient(160deg,#0d1117,#161b22,#1a2332);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.start-icon{font-size:5rem;margin-bottom:24px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.start-title{font-size:1.4rem;font-weight:700;margin-bottom:6px}
+.start-sub{font-size:0.85rem;color:rgba(255,255,255,0.4);margin-bottom:36px}
+.start-btn{background:linear-gradient(135deg,#4CAF50,#2E7D32);color:#fff;border:none;padding:18px 56px;border-radius:30px;font-size:1.15rem;font-weight:700;cursor:pointer;box-shadow:0 6px 28px rgba(76,175,80,0.35);transition:all .15s}
+.start-btn:active{transform:scale(0.95);box-shadow:0 3px 12px rgba(76,175,80,0.3)}
+.start-note{margin-top:20px;font-size:0.75rem;color:rgba(255,255,255,0.3);text-align:center;max-width:260px}
+
+/* ===== Connection status ===== */
+.conn-status{position:fixed;top:env(safe-area-inset-top,42px);left:50%;transform:translateX(-50%);margin-top:42px;z-index:8;padding:4px 14px;border-radius:12px;font-size:0.75rem;font-weight:600;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.conn-status.ok{background:rgba(76,175,80,0.2);color:#81C784}
+.conn-status.err{background:rgba(244,67,54,0.2);color:#EF9A9A}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <h3>📷 QR 掃描器</h3>
+  <span class="badge" id="countBadge">已掃 0</span>
+  <button class="btn-close" id="btnClose">✕</button>
+</div>
+
+<!-- Connection status -->
+<div class="conn-status" id="connStatus" style="display:none"></div>
+
+<!-- Scan frame -->
+<div class="scan-frame" id="scanFrame">
+  <div class="corner c-tl"></div><div class="corner c-tr"></div>
+  <div class="corner c-bl"></div><div class="corner c-br"></div>
+  <div class="laser"></div>
+</div>
+
+<!-- Camera area -->
+<div id="reader"></div>
+
+<!-- Feedback & Card overlays -->
+<div id="fbEl"></div>
+<div id="cardEl"></div>
+
+<!-- Status bar -->
+<div class="status-bar">
+  <div class="hint" id="hint">點擊啟動相機開始掃描</div>
+</div>
+
+<!-- Start screen -->
+<div class="start-screen" id="startScreen">
+  <div class="start-icon">📷</div>
+  <div class="start-title">QR Code 掃描器</div>
+  <div class="start-sub">興岩點班系統</div>
+  <button class="start-btn" id="startBtn">▶ 啟動掃描</button>
+  <div class="start-note">請允許相機權限以進行 QR Code 掃描</div>
+</div>
+
+<script>
+// =============================================================
+// 全域變數
+// =============================================================
+var scanCount = 0;
+var paused = false;
+var scanner = null;
+var currentItem = null;
+var locations = [];
+var mainWindow = window.opener;
+var connected = false;
+
+// =============================================================
+// 初始化
+// =============================================================
+document.getElementById('startBtn').addEventListener('click', startCamera);
+document.getElementById('btnClose').addEventListener('click', closeSelf);
+
+// 通知主頁面
+if (mainWindow) {
+  try {
+    mainWindow.postMessage({ type: 'scanner-ready' }, '*');
+    showConn(true);
+  } catch(e) {
+    showConn(false);
+  }
+} else {
+  showConn(false);
+}
+
+function showConn(ok) {
+  connected = ok;
+  var el = document.getElementById('connStatus');
+  el.style.display = 'block';
+  el.className = 'conn-status ' + (ok ? 'ok' : 'err');
+  el.textContent = ok ? '✓ 已連線主系統' : '✗ 未連線（請從主系統開啟）';
+  if (ok) setTimeout(function(){ el.style.display = 'none'; }, 2000);
+}
+
+// =============================================================
+// 音效 & 震動
+// =============================================================
+function beep() {
+  try { navigator.vibrate && navigator.vibrate([50, 30, 50]); } catch(e) {}
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+  } catch(e) {}
+}
+
+// =============================================================
+// 啟動相機
+// =============================================================
+function startCamera() {
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('scanFrame').style.display = 'block';
+  document.getElementById('hint').textContent = '對準 QR Code 自動掃描';
+
+  scanner = new Html5Qrcode("reader");
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+    onScanSuccess,
+    function() {}
+  ).catch(function(err) {
+    document.getElementById('scanFrame').style.display = 'none';
+    document.getElementById('reader').innerHTML =
+      '<div style="padding:80px 24px;text-align:center;margin-top:40px">' +
+      '<div style="font-size:3.5rem;margin-bottom:16px">❌</div>' +
+      '<div style="font-size:1.1rem;font-weight:700;margin-bottom:12px">相機啟動失敗</div>' +
+      '<div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:24px;word-break:break-all;padding:0 10px">' + err + '</div>' +
+      '<button onclick="location.reload()" style="background:linear-gradient(135deg,#4CAF50,#2E7D32);color:#fff;border:none;padding:14px 36px;border-radius:24px;font-size:1rem;font-weight:600;cursor:pointer">重新整理</button>' +
+      '</div>';
+  });
+}
+
+// =============================================================
+// 掃描回調
+// =============================================================
+function onScanSuccess(text) {
+  if (paused) return;
+  paused = true;
+  beep();
+  showFeedback('info', '⏳', '掃描成功', '查詢中...', 0);
+  sendToMain({ type: 'qr-scan-result', text: text });
+}
+
+// =============================================================
+// 回饋動畫
+// =============================================================
+function showFeedback(cls, icon, text, sub, ms) {
+  document.getElementById('fbEl').innerHTML =
+    '<div class="fb-overlay ' + cls + '">' +
+    '<div class="fb-icon">' + icon + '</div>' +
+    '<div class="fb-text">' + text + '</div>' +
+    (sub ? '<div class="fb-sub">' + sub + '</div>' : '') +
+    '</div>';
+  if (ms > 0) setTimeout(clearFeedback, ms);
+}
+function clearFeedback() {
+  document.getElementById('fbEl').innerHTML = '';
+  paused = false;
+  document.getElementById('hint').textContent = '繼續掃描下一個';
+}
+
+// =============================================================
+// 確認卡片
+// =============================================================
+function showConfirmCard(item) {
+  currentItem = item;
+  document.getElementById('fbEl').innerHTML = '';
+
+  var isAED = (item.name || '').toLowerCase().indexOf('aed') >= 0 || (item.name || '').indexOf('心臟') >= 0;
+  var isFire = (item.name || '').indexOf('火警') >= 0 || (item.name || '').indexOf('119') >= 0;
+  currentItem._loc = item.location || '';
+  currentItem._isAED = isAED;
+  currentItem._isFire = isFire;
+
+  var btns = locations.map(function(l) {
+    return '<button class="loc-btn' + (l === currentItem._loc ? ' active' : '') + '" onclick="pickLoc(this,\'' + l.replace(/'/g, "\\'") + '\')">' + l + '</button>';
+  }).join('');
+
+  var checks = '';
+  if (isAED) {
+    checks = '<div class="chk-box">' +
+      '<div class="chk-row"><input type="checkbox" id="ck1" onchange="updateOkBtn()"><label for="ck1">功能顯示正常</label></div>' +
+      '<div class="chk-row"><input type="checkbox" id="ck2" onchange="updateOkBtn()"><label for="ck2">貼片未過期</label></div></div>';
+  }
+  if (isFire) {
+    checks = '<div class="chk-box">' +
+      '<div class="chk-row"><input type="checkbox" id="ck1" onchange="updateOkBtn()"><label for="ck1">功能正常</label></div></div>';
+  }
+
+  document.getElementById('cardEl').innerHTML =
+    '<div class="card-wrap">' +
+    '<div class="card">' +
+      '<h3>' + item.name + '</h3>' +
+      '<div class="item-id">' + item.id + '</div>' +
+      '<div class="loc-label">位置 *必填</div>' +
+      '<div class="loc-grid">' + btns + '</div>' +
+      checks +
+      '<div class="btn-row">' +
+        '<button class="btn-action btn-fault" onclick="goRepair()">✂ 故障</button>' +
+        '<button class="btn-action btn-ok" id="btnOk" onclick="doConfirm()">✓ 確認正常</button>' +
+      '</div>' +
+      '<button class="btn-cancel" onclick="doCancel()">取消</button>' +
+    '</div></div>';
+
+  updateOkBtn();
+}
+
+function pickLoc(el, loc) {
+  currentItem._loc = loc;
+  document.querySelectorAll('.loc-btn').forEach(function(b) { b.classList.remove('active'); });
+  el.classList.add('active');
+  updateOkBtn();
+}
+
+function updateOkBtn() {
+  if (!currentItem) return;
+  var ok = !!currentItem._loc;
+  if (currentItem._isAED) {
+    var a = document.getElementById('ck1'), b = document.getElementById('ck2');
+    if (a && b) ok = ok && a.checked && b.checked;
+  }
+  if (currentItem._isFire) {
+    var a = document.getElementById('ck1');
+    if (a) ok = ok && a.checked;
+  }
+  var btn = document.getElementById('btnOk');
+  if (btn) btn.disabled = !ok;
+}
+
+function doConfirm() {
+  if (!currentItem || !currentItem._loc) return;
+  var btn = document.getElementById('btnOk');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 上傳中';
+  sendToMain({ type: 'qr-confirm', itemId: currentItem.id, location: currentItem._loc });
+}
+
+function doCancel() {
+  document.getElementById('cardEl').innerHTML = '';
+  currentItem = null;
+  paused = false;
+  sendToMain({ type: 'qr-cancel' });
+}
+
+// =============================================================
+// 報修
+// =============================================================
+function goRepair() {
+  document.getElementById('cardEl').innerHTML =
+    '<div class="card-wrap">' +
+    '<div class="repair-card">' +
+      '<h3>🔧 報修 — ' + currentItem.name + '</h3>' +
+      '<textarea class="repair-input" id="repairReason" rows="3" placeholder="請輸入故障原因..."></textarea>' +
+      '<button class="repair-btn" id="btnRepair" onclick="doRepair()">送出報修</button>' +
+      '<button class="btn-cancel" onclick="doCancel()">取消</button>' +
+    '</div></div>';
+}
+
+function doRepair() {
+  var reason = document.getElementById('repairReason').value.trim();
+  if (!reason) { alert('請填寫故障原因'); return; }
+  var btn = document.getElementById('btnRepair');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 送出中';
+  sendToMain({ type: 'qr-repair', itemId: currentItem.id, reason: reason });
+}
+
+// =============================================================
+// 與主頁面通訊
+// =============================================================
+function sendToMain(data) {
+  if (mainWindow) {
+    try { mainWindow.postMessage(data, '*'); } catch(e) {}
+  }
+}
+
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.type) return;
+  var d = e.data;
+
+  if (d.type === 'scanner-init') {
+    locations = d.locations || [];
+    connected = true;
+  }
+
+  if (d.type === 'show-confirm') {
+    showConfirmCard(d.item);
+  }
+
+  if (d.type === 'scan-feedback') {
+    document.getElementById('cardEl').innerHTML = '';
+    var icons = { success: '✅', warning: '⚠️', error: '❌' };
+    showFeedback(d.status, icons[d.status] || 'ℹ️', d.message, d.sub || '', d.duration || 2000);
+    if (d.status === 'success') {
+      scanCount++;
+      document.getElementById('countBadge').textContent = '已掃 ' + scanCount;
+    }
+  }
+
+  if (d.type === 'scan-resume') {
+    clearFeedback();
+  }
+
+  if (d.type === 'close-scanner') {
+    closeSelf();
+  }
+});
+
+// =============================================================
+// 關閉
+// =============================================================
+function closeSelf() {
+  try { if (scanner) scanner.stop(); } catch(e) {}
+  sendToMain({ type: 'qr-scanner-closed' });
+  window.close();
+  setTimeout(function() {
+    document.body.innerHTML =
+      '<div style="padding:60px 24px;text-align:center;background:linear-gradient(160deg,#0d1117,#161b22);height:100vh;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">' +
+      '<div style="font-size:3.5rem;margin-bottom:16px">✅</div>' +
+      '<div style="font-size:1.15rem;font-weight:700">掃描完成</div>' +
+      '<div style="color:rgba(255,255,255,0.4);margin-top:10px;font-size:0.9rem">請手動關閉此分頁</div></div>';
+  }, 200);
+}
+</script>
+</body>
+</html>
