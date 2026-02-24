@@ -145,6 +145,13 @@ var locations = [];
 var mainWindow = window.opener;
 var connected = false;
 
+// ★ 從 URL 參數讀取位置列表（最可靠的方式）
+try {
+  var urlParams = new URLSearchParams(window.location.search);
+  var locsParam = urlParams.get('locs');
+  if (locsParam) locations = JSON.parse(locsParam);
+} catch(e) {}
+
 // =============================================================
 // 初始化
 // =============================================================
