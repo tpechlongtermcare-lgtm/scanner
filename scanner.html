@@ -3,24 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>QR 掃描器 - 興岩點班系統 v2</title>
+<title>QR 掃描器 v3 - 興岩點班系統</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;overflow-x:hidden;min-height:100vh;min-height:100dvh}
+body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;color:#fff;overflow-x:hidden;min-height:100vh;min-height:100dvh}
 
-/* Top bar */
-.top-bar{background:rgba(0,0,0,0.88);padding:env(safe-area-inset-top,8px) 16px 8px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:10;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.top-bar h3{font-size:0.95rem;font-weight:700}
-.badge{background:rgba(76,175,80,0.3);padding:3px 12px;border-radius:12px;font-size:0.8rem;color:#81C784}
-.btn-close{background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.top-bar{background:rgba(0,0,0,0.88);padding:env(safe-area-inset-top,8px) 14px 8px;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:10;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);gap:8px}
+.top-bar h3{font-size:0.9rem;font-weight:700;white-space:nowrap}
+.badge{background:rgba(76,175,80,0.3);padding:3px 10px;border-radius:12px;font-size:0.75rem;color:#81C784;white-space:nowrap}
+.btn-close{background:rgba(255,255,255,0.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
-/* Camera */
 #reader{width:100vw;height:100vh;height:100dvh}
 #reader video{object-fit:cover!important;width:100%!important;height:100%!important}
 
-/* Scan frame */
-.scan-frame{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:260px;z-index:5;pointer-events:none;display:none}
+.scan-frame{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:250px;height:250px;z-index:5;pointer-events:none;display:none}
 .corner{position:absolute;width:28px;height:28px;border-color:#4CAF50;border-style:solid;border-width:0}
 .c-tl{top:0;left:0;border-top-width:4px;border-left-width:4px;border-radius:6px 0 0 0}
 .c-tr{top:0;right:0;border-top-width:4px;border-right-width:4px;border-radius:0 6px 0 0}
@@ -29,519 +26,485 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',san
 .laser{position:absolute;top:0;left:10%;right:10%;height:3px;background:linear-gradient(90deg,transparent,#4CAF50,transparent);animation:laserAni 2s ease-in-out infinite}
 @keyframes laserAni{0%{top:0}50%{top:calc(100% - 3px)}100%{top:0}}
 
-/* Status bar */
-.status-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.88);padding:14px 16px env(safe-area-inset-bottom,14px);text-align:center;z-index:10;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.hint{font-size:0.9rem;color:rgba(255,255,255,0.55)}
+/* 進度條 */
+.prog-bar{position:fixed;top:calc(env(safe-area-inset-top,8px) + 44px);left:0;right:0;z-index:9;padding:0 14px}
+.prog-track{height:6px;background:rgba(255,255,255,0.18);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#4CAF50,#81C784);width:0%;transition:width .4s ease}
+.prog-text{font-size:0.72rem;color:rgba(255,255,255,0.65);text-align:center;margin-top:4px}
 
-/* ===== Feedback overlay ===== */
+.status-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.9);padding:12px 16px env(safe-area-inset-bottom,12px);text-align:center;z-index:10;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.hint{font-size:0.85rem;color:rgba(255,255,255,0.55)}
+.btn-list{background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:9px 20px;border-radius:20px;font-size:0.85rem;font-weight:600;cursor:pointer;margin-top:8px}
+
+/* Feedback */
 .fb-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fbIn .2s ease;padding:24px}
-@keyframes fbIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
-.fb-overlay.success{background:rgba(46,125,50,0.93)}
-.fb-overlay.warning{background:rgba(245,124,0,0.93)}
-.fb-overlay.error{background:rgba(211,47,47,0.93)}
-.fb-overlay.info{background:rgba(30,30,30,0.93)}
-.fb-icon{font-size:5rem;animation:iconPop .4s ease}
-@keyframes iconPop{0%{transform:scale(0) rotate(-10deg)}60%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
-.fb-text{font-size:1.3rem;font-weight:700;margin-top:14px;text-align:center;padding:0 10px}
-.fb-sub{font-size:0.85rem;margin-top:8px;opacity:0.8;text-align:center;line-height:1.6;padding:0 10px}
-.btn-retry{background:#fff;color:#333;border:none;padding:13px 30px;border-radius:24px;font-weight:700;margin-top:20px;font-size:0.95rem;cursor:pointer}
+@keyframes fbIn{from{opacity:0;transform:scale(0.88)}to{opacity:1;transform:scale(1)}}
+.fb-overlay.success{background:rgba(46,125,50,0.94)}
+.fb-overlay.warning{background:rgba(245,124,0,0.94)}
+.fb-overlay.error{background:rgba(211,47,47,0.94)}
+.fb-overlay.info{background:rgba(28,28,30,0.94)}
+.fb-icon{font-size:4.6rem;animation:iconPop .4s ease}
+@keyframes iconPop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.fb-text{font-size:1.25rem;font-weight:700;margin-top:14px;text-align:center}
+.fb-sub{font-size:0.85rem;margin-top:8px;opacity:0.85;text-align:center;line-height:1.7}
+.btn-retry{background:#fff;color:#333;border:none;padding:13px 32px;border-radius:24px;font-weight:700;margin-top:20px;font-size:0.95rem;cursor:pointer}
 .btn-ghost{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:11px 26px;border-radius:24px;font-weight:600;margin-top:10px;font-size:0.85rem;cursor:pointer}
 
-/* ===== Confirm card ===== */
-.card-wrap{position:fixed;top:0;left:0;right:0;bottom:0;z-index:25;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;animation:slideUp .3s cubic-bezier(0.2,0.8,0.3,1)}
-@keyframes slideUp{from{opacity:0}to{opacity:1}}
-.card{background:#fff;color:#333;width:100%;max-width:500px;border-radius:20px 20px 0 0;padding:24px 20px env(safe-area-inset-bottom,20px);max-height:82vh;overflow-y:auto;animation:cardSlide .3s cubic-bezier(0.2,0.8,0.3,1)}
+/* Card */
+.card-wrap{position:fixed;top:0;left:0;right:0;bottom:0;z-index:25;background:rgba(0,0,0,0.55);display:flex;align-items:flex-end;justify-content:center}
+.card{background:#fff;color:#333;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:22px 20px env(safe-area-inset-bottom,20px);max-height:88vh;overflow-y:auto;animation:cardSlide .28s cubic-bezier(0.2,0.8,0.3,1)}
 @keyframes cardSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.card h3{font-size:1.15rem;font-weight:800;text-align:center;margin-bottom:4px}
-.card .item-id{font-size:0.78rem;color:#999;text-align:center;font-family:monospace;background:#f5f5f5;padding:4px 12px;border-radius:8px;display:inline-block;margin:0 auto 14px;width:100%}
+.card h3{font-size:1.12rem;font-weight:800;text-align:center;margin-bottom:6px}
+.item-id{font-size:0.78rem;color:#888;text-align:center;font-family:monospace;background:#f5f5f5;padding:5px 12px;border-radius:8px;margin-bottom:14px}
 .loc-label{font-size:0.85rem;font-weight:700;color:#E53935;margin-bottom:8px}
 .loc-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.loc-btn{padding:8px 16px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;font-size:0.85rem;font-weight:600;color:#555;cursor:pointer;transition:all .15s}
-.loc-btn.active{border-color:#1976D2;background:#1976D2;color:#fff;box-shadow:0 2px 8px rgba(25,118,210,0.3)}
-.loc-input{width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:14px;font-size:0.95rem;font-family:inherit;margin-bottom:6px;text-align:center;font-weight:600}
+.loc-btn{padding:8px 15px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;font-size:0.85rem;font-weight:600;color:#555;cursor:pointer}
+.loc-btn.active{border-color:#1976D2;background:#1976D2;color:#fff}
+.loc-input{width:100%;padding:12px 14px;border:2px solid #e0e0e0;border-radius:14px;font-size:0.95rem;font-family:inherit;text-align:center;font-weight:600}
 .loc-input:focus{outline:none;border-color:#1976D2}
-.chk-box{background:linear-gradient(135deg,#FFF5F5,#FFF0F0);border-radius:14px;padding:12px 14px;margin:10px 0;border:1px solid #FFCDD2}
+.chk-box{background:#FFF5F5;border-radius:14px;padding:12px 14px;margin:12px 0;border:1px solid #FFCDD2}
 .chk-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:0.9rem}
-.chk-row input[type=checkbox]{width:22px;height:22px;accent-color:#4CAF50;cursor:pointer}
-.chk-row label{cursor:pointer;flex:1}
+.chk-row input[type=checkbox]{width:22px;height:22px;accent-color:#4CAF50}
+.chk-row label{flex:1;cursor:pointer}
 .btn-row{display:flex;gap:10px;margin-top:16px}
-.btn-action{flex:1;padding:14px;border:none;border-radius:16px;font-size:1rem;font-weight:700;cursor:pointer;transition:transform .1s}
+.btn-action{flex:1;padding:14px;border:none;border-radius:16px;font-size:1rem;font-weight:700;cursor:pointer}
 .btn-action:active{transform:scale(0.97)}
-.btn-ok{background:linear-gradient(135deg,#E8A04C,#D4842A);color:#fff;box-shadow:0 4px 12px rgba(212,132,42,0.3)}
-.btn-ok:disabled{opacity:0.35;box-shadow:none}
-.btn-fault{background:#fff;border:2px solid #EF6C00;color:#EF6C00;flex:0.5}
-.btn-cancel{background:none;border:none;color:#aaa;font-size:0.9rem;width:100%;padding:10px;margin-top:6px;cursor:pointer}
+.btn-ok{background:linear-gradient(135deg,#E8A04C,#D4842A);color:#fff}
+.btn-ok:disabled{opacity:0.35}
+.btn-fault{background:#fff;border:2px solid #EF6C00;color:#EF6C00;flex:0.55}
+.btn-cancel{background:none;border:none;color:#aaa;font-size:0.9rem;width:100%;padding:11px;margin-top:6px;cursor:pointer}
 .spinner{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
-.big-id{font-size:1.5rem;font-weight:800;font-family:monospace;text-align:center;background:#f5f5f5;color:#333;padding:16px 12px;border-radius:14px;letter-spacing:1px;word-break:break-all;margin:10px 0}
 
-/* ===== Repair card ===== */
-.repair-card{background:#fff;color:#333;width:100%;max-width:500px;border-radius:20px 20px 0 0;padding:24px 20px env(safe-area-inset-bottom,20px);animation:cardSlide .3s cubic-bezier(0.2,0.8,0.3,1)}
-.repair-card h3{font-size:1.1rem;font-weight:800;text-align:center;margin-bottom:14px;color:#E53935}
-.repair-input{width:100%;padding:14px;border:2px solid #e0e0e0;border-radius:14px;font-size:1rem;margin-bottom:12px;resize:none;font-family:inherit;transition:border-color .2s}
+/* Repair */
+.repair-input{width:100%;padding:14px;border:2px solid #e0e0e0;border-radius:14px;font-size:1rem;margin-bottom:12px;resize:none;font-family:inherit}
 .repair-input:focus{outline:none;border-color:#E53935}
-.repair-btn{width:100%;padding:14px;border:none;border-radius:16px;font-size:1rem;font-weight:700;background:linear-gradient(135deg,#E53935,#C62828);color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(229,57,53,0.3)}
+.repair-btn{width:100%;padding:14px;border:none;border-radius:16px;font-size:1rem;font-weight:700;background:linear-gradient(135deg,#E53935,#C62828);color:#fff;cursor:pointer}
 
-/* ===== Start screen ===== */
-.start-screen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;background:linear-gradient(160deg,#0d1117,#161b22,#1a2332);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.start-icon{font-size:5rem;margin-bottom:24px;animation:float 3s ease-in-out infinite}
+/* 待點清單 */
+.list-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.list-head h3{font-size:1.05rem;font-weight:800}
+.loc-group{font-size:0.82rem;font-weight:800;color:#D4842A;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #eee}
+.list-row{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px solid #f2f2f2;gap:10px}
+.list-name{font-size:0.9rem;font-weight:600}
+.list-id{font-size:0.72rem;color:#999;font-family:monospace}
+.btn-quick{background:#D4842A;color:#fff;border:none;padding:7px 14px;border-radius:16px;font-size:0.8rem;font-weight:700;white-space:nowrap;cursor:pointer}
+
+/* Start */
+.start-screen{position:fixed;inset:0;z-index:50;background:linear-gradient(160deg,#0d1117,#161b22,#1a2332);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.start-icon{font-size:4.6rem;margin-bottom:20px;animation:float 3s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-.start-title{font-size:1.4rem;font-weight:700;margin-bottom:6px}
-.start-sub{font-size:0.85rem;color:rgba(255,255,255,0.4);margin-bottom:28px}
-.start-btn{background:linear-gradient(135deg,#4CAF50,#2E7D32);color:#fff;border:none;padding:18px 56px;border-radius:30px;font-size:1.15rem;font-weight:700;cursor:pointer;box-shadow:0 6px 28px rgba(76,175,80,0.35);transition:all .15s}
-.start-btn:active{transform:scale(0.95);box-shadow:0 3px 12px rgba(76,175,80,0.3)}
-.start-btn.offline{background:linear-gradient(135deg,#78909C,#455A64);box-shadow:0 6px 28px rgba(69,90,100,0.35)}
-.start-note{margin-top:20px;font-size:0.75rem;color:rgba(255,255,255,0.3);text-align:center;max-width:280px;line-height:1.7}
-.offline-warn{background:rgba(211,47,47,0.18);border:1px solid rgba(239,83,80,0.5);color:#EF9A9A;border-radius:14px;padding:14px 16px;font-size:0.8rem;line-height:1.8;max-width:320px;margin-bottom:24px;text-align:left}
-.offline-warn b{color:#FFCDD2}
-
-/* ===== Connection status ===== */
-.conn-status{position:fixed;top:env(safe-area-inset-top,42px);left:50%;transform:translateX(-50%);margin-top:42px;z-index:8;padding:4px 14px;border-radius:12px;font-size:0.75rem;font-weight:600;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.conn-status.ok{background:rgba(76,175,80,0.2);color:#81C784}
-.conn-status.err{background:rgba(244,67,54,0.25);color:#EF9A9A}
+.start-title{font-size:1.35rem;font-weight:700;margin-bottom:6px}
+.start-sub{font-size:0.85rem;color:rgba(255,255,255,0.45);margin-bottom:22px;text-align:center;line-height:1.8}
+.start-btn{background:linear-gradient(135deg,#4CAF50,#2E7D32);color:#fff;border:none;padding:17px 54px;border-radius:30px;font-size:1.1rem;font-weight:700;cursor:pointer;box-shadow:0 6px 26px rgba(76,175,80,0.35)}
+.start-btn:disabled{background:linear-gradient(135deg,#78909C,#455A64);box-shadow:none}
+.start-btn:active{transform:scale(0.96)}
+.start-note{margin-top:18px;font-size:0.75rem;color:rgba(255,255,255,0.32);text-align:center;max-width:290px;line-height:1.8}
+.err-box{background:rgba(211,47,47,0.18);border:1px solid rgba(239,83,80,0.5);color:#EF9A9A;border-radius:14px;padding:14px 16px;font-size:0.8rem;line-height:1.9;max-width:330px;margin-bottom:22px;text-align:left}
+.err-box b{color:#FFCDD2}
+.info-chip{background:rgba(255,255,255,0.08);border-radius:12px;padding:10px 18px;font-size:0.82rem;color:rgba(255,255,255,0.7);margin-bottom:22px;text-align:center;line-height:1.8}
 </style>
 </head>
 <body>
 
-<!-- Top bar -->
 <div class="top-bar">
-  <h3>📷 QR 掃描器</h3>
-  <span class="badge" id="countBadge">已掃 0</span>
+  <h3 id="titleBar">📷 掃描器</h3>
+  <span class="badge" id="countBadge">0 / 0</span>
   <button class="btn-close" id="btnClose">✕</button>
 </div>
 
-<!-- Connection status -->
-<div class="conn-status" id="connStatus" style="display:none"></div>
+<div class="prog-bar" id="progBar" style="display:none">
+  <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+  <div class="prog-text" id="progText"></div>
+</div>
 
-<!-- Scan frame -->
 <div class="scan-frame" id="scanFrame">
   <div class="corner c-tl"></div><div class="corner c-tr"></div>
   <div class="corner c-bl"></div><div class="corner c-br"></div>
   <div class="laser"></div>
 </div>
 
-<!-- Camera area -->
 <div id="reader"></div>
-
-<!-- Feedback & Card overlays -->
 <div id="fbEl"></div>
 <div id="cardEl"></div>
 
-<!-- Status bar -->
-<div class="status-bar">
-  <div class="hint" id="hint">點擊啟動相機開始掃描</div>
+<div class="status-bar" id="statusBar" style="display:none">
+  <div class="hint" id="hint">對準 QR Code 自動掃描</div>
+  <button class="btn-list" id="btnList">📋 待點清單 / 手動點班</button>
 </div>
 
-<!-- Start screen -->
 <div class="start-screen" id="startScreen">
   <div class="start-icon">📷</div>
   <div class="start-title">QR Code 掃描器</div>
-  <div class="start-sub">興岩點班系統</div>
-  <div id="offlineWarn" style="display:none"></div>
-  <button class="start-btn" id="startBtn">▶ 啟動掃描</button>
-  <div class="start-note" id="startNote">請允許相機權限以進行 QR Code 掃描</div>
+  <div class="start-sub" id="startSub">興岩點班系統 v3</div>
+  <div id="errBox"></div>
+  <div id="infoChip"></div>
+  <button class="start-btn" id="startBtn" disabled>載入中…</button>
+  <div class="start-note" id="startNote">正在連線資料庫…</div>
 </div>
 
 <script>
-// =============================================================
-// v2 修正重點
-//  1. 讀取 URL 的 locs 參數（不再只靠 postMessage 送位置清單）
-//  2. 未連線主系統時 → 離線模式，只顯示財編，不會卡在「查詢中…」
-//  3. 送出後 12 秒沒回應 → 逾時提示 + 可重試，不會永遠轉圈
-//  4. 確認卡片新增「手動輸入位置」欄位
-// =============================================================
-var WATCHDOG_MS = 12000;
+// ==============================================================
+// v3：直連 GAS，不依賴主分頁（window.opener 不再是必要條件）
+// URL 參數：?gas=<GAS exec 網址>&t=<token>&u=<姓名>&s=<班別>&locs=[...]
+// ==============================================================
+var Q = new URLSearchParams(location.search);
+var GAS_URL   = Q.get('gas') || '';
+var TOKEN     = Q.get('t')   || '';
+var USER_NAME = Q.get('u')   || '';
+var SHIFT     = Q.get('s')   || '';
+var FORCE_LATE= Q.get('late') === '1';
+
 var DEFAULT_LOCS = ['護理站','A區','B區','大廳','庫房','治療室','會議室','辦公室'];
-
-var scanCount = 0;
-var paused = false;
-var scanner = null;
-var currentItem = null;
-var mainWindow = window.opener;
-var pendingTimer = null;
-var lastScanText = '';
-
-// ---- 位置清單：優先用 URL 參數，其次預設 ----
-var locations = (function () {
-  try {
-    var raw = new URLSearchParams(location.search).get('locs');
-    if (raw) {
-      var arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length) return arr;
-    }
-  } catch (e) {}
+var locations = (function(){
+  try { var a = JSON.parse(Q.get('locs')); if (Array.isArray(a) && a.length) return a; } catch(e){}
   return DEFAULT_LOCS.slice();
 })();
 
-// =============================================================
-// 連線狀態
-// =============================================================
-function linkAlive() {
-  try { return !!(mainWindow && !mainWindow.closed); } catch (e) { return false; }
+var allItems = [];      // 護理組、非故障
+var doneIds  = {};      // 已完成
+var scanner  = null;
+var paused   = true;
+var currentItem = null;
+
+// ---------- 小工具 ----------
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function beep(){
+  try{ navigator.vibrate && navigator.vibrate([50,30,50]); }catch(e){}
+  try{
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='sine'; o.frequency.value=880;
+    g.gain.setValueAtTime(0.15,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);
+    o.start(); o.stop(ctx.currentTime+0.15);
+  }catch(e){}
 }
 
-function showConn(ok) {
-  var el = document.getElementById('connStatus');
-  el.style.display = 'block';
-  el.className = 'conn-status ' + (ok ? 'ok' : 'err');
-  el.textContent = ok ? '✓ 已連線主系統' : '✗ 離線模式（無法上傳）';
-  if (ok) setTimeout(function () { el.style.display = 'none'; }, 2000);
+// ---------- 與 GAS 溝通 ----------
+function gasGet(action, extra){
+  var u = GAS_URL + (GAS_URL.indexOf('?')<0?'?':'&') + 'action=' + action + '&token=' + encodeURIComponent(TOKEN);
+  if (extra) { for (var k in extra) u += '&' + k + '=' + encodeURIComponent(extra[k]); }
+  return fetch(u, { method:'GET', redirect:'follow' }).then(function(r){ return r.json(); });
+}
+function gasPost(payload){
+  payload.token = TOKEN;
+  return fetch(GAS_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    body: JSON.stringify(payload)   // 不設 headers → 簡單請求，避開 CORS 預檢
+  }).then(function(r){ return r.json(); });
 }
 
-function renderStartScreen() {
-  var ok = linkAlive();
-  var warn = document.getElementById('offlineWarn');
-  var btn = document.getElementById('startBtn');
-  var note = document.getElementById('startNote');
+// ---------- 啟動流程 ----------
+$('btnClose').addEventListener('click', closeSelf);
+$('btnList').addEventListener('click', showPendingList);
+$('btnStart');
+$('startBtn').addEventListener('click', startCamera);
 
-  if (ok) {
-    warn.style.display = 'none';
-    btn.className = 'start-btn';
-    btn.textContent = '▶ 啟動掃描';
-    note.textContent = '請允許相機權限以進行 QR Code 掃描';
-  } else {
-    warn.style.display = 'block';
-    warn.className = 'offline-warn';
-    warn.innerHTML =
-      '<b>⚠️ 未連線主系統</b><br>' +
-      '這個分頁沒有跟點班系統連上，<b>掃描結果無法上傳</b>。<br><br>' +
-      '請這樣做：<br>' +
-      '1. 關掉這個分頁<br>' +
-      '2. 回到「興岩點班系統」分頁<br>' +
-      '3. 重新按一次「啟動掃描」<br><br>' +
-      '（不要用書籤／歷史紀錄直接開這一頁）';
-    btn.className = 'start-btn offline';
-    btn.textContent = '仍要開啟相機（離線查編號）';
-    note.textContent = '離線模式只會顯示財產編號，可回主系統用「查看清單 → 快速點班」手動完成。';
+function fail(html, note){
+  $('errBox').className = 'err-box';
+  $('errBox').innerHTML = html;
+  $('startBtn').textContent = '重新載入';
+  $('startBtn').disabled = false;
+  $('startBtn').onclick = function(){ location.reload(); };
+  $('startNote').textContent = note || '';
+}
+
+function boot(){
+  if (!GAS_URL || !TOKEN || !USER_NAME || !SHIFT) {
+    fail('<b>⚠️ 缺少啟動參數</b><br>這一頁必須從主系統開啟。<br><br>' +
+         '請回到「興岩點班系統」→ 選擇班別 → 按「啟動掃描」。<br><br>' +
+         '（不要用書籤／歷史紀錄直接開這一頁）', '');
+    return;
   }
+
+  $('titleBar').textContent = '📷 ' + SHIFT + '班 · ' + USER_NAME;
+
+  Promise.all([ gasGet('items'), gasGet('checked', { shift: SHIFT }) ])
+    .then(function(res){
+      var r1 = res[0], r2 = res[1];
+      if (!r1.success) { fail('<b>⚠️ 讀取物品清單失敗</b><br>' + esc(r1.message||''), ''); return; }
+
+      allItems = (r1.items||[]).filter(function(i){
+        return i.category === '護理組' &&
+               String(i.status||'').indexOf('故障') < 0 &&
+               String(i.status||'').indexOf('送修') < 0;
+      });
+      (r2.ids||[]).forEach(function(id){ doneIds[String(id)] = true; });
+
+      updateProgress();
+      $('infoChip').className = 'info-chip';
+      $('infoChip').innerHTML = '✓ 已連線資料庫<br>共 ' + allItems.length + ' 項，已完成 ' + doneCount() + ' 項';
+      $('startBtn').disabled = false;
+      $('startBtn').textContent = '▶ 啟動掃描';
+      $('startNote').textContent = '掃描結果會直接寫入資料庫，不需要保持主系統分頁開著。';
+    })
+    .catch(function(err){
+      fail('<b>⚠️ 無法連線資料庫</b><br>' + esc(String(err)) + '<br><br>' +
+           '可能原因：<br>1. GAS 部署權限不是「所有人」<br>2. 網路不穩<br>3. token 設定不一致',
+           '請聯繫系統管理者（鄭瑞賢）');
+    });
+}
+boot();
+
+// ---------- 進度 ----------
+function doneCount(){ return allItems.filter(function(i){ return doneIds[i.id]; }).length; }
+function remaining(){ return allItems.filter(function(i){ return !doneIds[i.id]; }); }
+function updateProgress(){
+  var d = doneCount(), t = allItems.length;
+  $('countBadge').textContent = d + ' / ' + t;
+  var pct = t ? Math.round(d/t*100) : 0;
+  $('progFill').style.width = pct + '%';
+  $('progText').textContent = '完成 ' + pct + '%　剩餘 ' + (t-d) + ' 項';
 }
 
-renderStartScreen();
-setInterval(function () {
-  if (document.getElementById('startScreen').style.display !== 'none') renderStartScreen();
-}, 3000);
+// ---------- 相機 ----------
+function startCamera(){
+  $('startScreen').style.display = 'none';
+  $('scanFrame').style.display = 'block';
+  $('progBar').style.display = 'block';
+  $('statusBar').style.display = 'block';
+  paused = false;
 
-// 通知主頁面
-if (mainWindow) {
-  try { mainWindow.postMessage({ type: 'scanner-ready' }, '*'); showConn(true); }
-  catch (e) { showConn(false); }
-} else {
-  showConn(false);
-}
-
-document.getElementById('startBtn').addEventListener('click', startCamera);
-document.getElementById('btnClose').addEventListener('click', closeSelf);
-
-// =============================================================
-// 逾時看門狗
-// =============================================================
-function armWatchdog(title, sub) {
-  clearWatchdog();
-  pendingTimer = setTimeout(function () {
-    pendingTimer = null;
-    showFeedback('error', '⏱', title || '主系統沒有回應',
-      (sub || '') + '<br>請確認「興岩點班系統」分頁還開著，或回主系統重新按「啟動掃描」。',
-      0,
-      '<button class="btn-retry" onclick="retryNow()">重新掃描</button>' +
-      (lastScanText ? '<button class="btn-ghost" onclick="showOfflineResult(lastScanText)">顯示財編</button>' : '')
-    );
-  }, WATCHDOG_MS);
-}
-function clearWatchdog() {
-  if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
-}
-function retryNow() {
-  clearWatchdog();
-  document.getElementById('cardEl').innerHTML = '';
-  clearFeedback();
-}
-
-// =============================================================
-// 音效 & 震動
-// =============================================================
-function beep() {
-  try { navigator.vibrate && navigator.vibrate([50, 30, 50]); } catch (e) {}
-  try {
-    var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    var osc = ctx.createOscillator();
-    var gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.15);
-  } catch (e) {}
-}
-
-// =============================================================
-// 啟動相機
-// =============================================================
-function startCamera() {
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('scanFrame').style.display = 'block';
-  document.getElementById('hint').textContent = linkAlive() ? '對準 QR Code 自動掃描' : '離線模式：只顯示財產編號';
-
-  scanner = new Html5Qrcode("reader");
+  scanner = new Html5Qrcode('reader');
   scanner.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-    onScanSuccess,
-    function () {}
-  ).catch(function (err) {
-    document.getElementById('scanFrame').style.display = 'none';
-    document.getElementById('reader').innerHTML =
-      '<div style="padding:80px 24px;text-align:center;margin-top:40px">' +
-      '<div style="font-size:3.5rem;margin-bottom:16px">❌</div>' +
-      '<div style="font-size:1.1rem;font-weight:700;margin-bottom:12px">相機啟動失敗</div>' +
-      '<div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:24px;word-break:break-all;padding:0 10px">' + err + '</div>' +
-      '<button onclick="location.reload()" style="background:linear-gradient(135deg,#4CAF50,#2E7D32);color:#fff;border:none;padding:14px 36px;border-radius:24px;font-size:1rem;font-weight:600;cursor:pointer">重新整理</button>' +
+    { facingMode: 'environment' },
+    { fps:10, qrbox:{ width:250, height:250 }, aspectRatio:1.0 },
+    onScan,
+    function(){}
+  ).catch(function(err){
+    $('scanFrame').style.display='none';
+    $('reader').innerHTML =
+      '<div style="padding:90px 24px;text-align:center">' +
+      '<div style="font-size:3.4rem;margin-bottom:14px">❌</div>' +
+      '<div style="font-size:1.05rem;font-weight:700;margin-bottom:10px">相機啟動失敗</div>' +
+      '<div style="font-size:0.78rem;color:rgba(255,255,255,0.5);margin-bottom:20px;word-break:break-all">' + esc(err) + '</div>' +
+      '<button onclick="location.reload()" style="background:#4CAF50;color:#fff;border:none;padding:13px 34px;border-radius:24px;font-weight:700">重新整理</button>' +
+      '<button onclick="showPendingList()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:12px 30px;border-radius:24px;font-weight:600;margin-top:12px;display:block;margin-left:auto;margin-right:auto">改用清單手動點班</button>' +
       '</div>';
   });
 }
 
-// =============================================================
-// 掃描回調
-// =============================================================
-function onScanSuccess(text) {
+function onScan(text){
   if (paused) return;
   paused = true;
-  lastScanText = text;
   beep();
+  var item = allItems.find(function(i){ return String(i.id) === String(text); });
 
-  if (!linkAlive()) {           // ★ 離線：直接顯示財編，不會卡住
-    showOfflineResult(text);
+  if (!item) {
+    showFb('error','❌','查無此財產編號', esc(text) + '<br>可能不在點班清單，或已報修中', 2200);
     return;
   }
-
-  showFeedback('info', '⏳', '掃描成功', '查詢中...', 0);
-  sendToMain({ type: 'qr-scan-result', text: text });
-  armWatchdog('主系統沒有回應', '掃描到：' + text);
+  if (doneIds[item.id]) {
+    showFb('warning','✅','已完成點班', esc(item.name), 1600);
+    return;
+  }
+  showConfirm(item);
 }
 
-// =============================================================
-// 離線結果卡片
-// =============================================================
-function showOfflineResult(text) {
-  clearWatchdog();
-  document.getElementById('fbEl').innerHTML = '';
-  document.getElementById('cardEl').innerHTML =
-    '<div class="card-wrap"><div class="card">' +
-      '<h3>📋 掃描結果（未上傳）</h3>' +
-      '<div class="big-id">' + text + '</div>' +
-      '<div style="font-size:0.82rem;color:#777;line-height:1.8;text-align:center">' +
-        '目前沒有連上主系統，無法直接上傳。<br>' +
-        '請回到「興岩點班系統」，用<b>「查看清單 → 快速點班」</b>完成這一項。' +
-      '</div>' +
-      '<div class="btn-row">' +
-        '<button class="btn-action btn-ok" onclick="copyId(\'' + String(text).replace(/'/g, "\\'") + '\')">複製編號</button>' +
-      '</div>' +
-      '<button class="btn-cancel" onclick="doCancel()">繼續掃描</button>' +
-    '</div></div>';
-}
-
-function copyId(t) {
-  try {
-    navigator.clipboard.writeText(t);
-    document.getElementById('hint').textContent = '已複製：' + t;
-  } catch (e) { alert(t); }
-}
-
-// =============================================================
-// 回饋動畫
-// =============================================================
-function showFeedback(cls, icon, text, sub, ms, extraHtml) {
-  document.getElementById('fbEl').innerHTML =
+// ---------- 回饋 ----------
+function showFb(cls, icon, text, sub, ms, extra){
+  $('cardEl').innerHTML = '';
+  $('fbEl').innerHTML =
     '<div class="fb-overlay ' + cls + '">' +
     '<div class="fb-icon">' + icon + '</div>' +
     '<div class="fb-text">' + text + '</div>' +
     (sub ? '<div class="fb-sub">' + sub + '</div>' : '') +
-    (extraHtml || '') +
-    '</div>';
-  if (ms > 0) setTimeout(clearFeedback, ms);
+    (extra || '') + '</div>';
+  if (ms > 0) setTimeout(clearFb, ms);
 }
-function clearFeedback() {
-  clearWatchdog();
-  document.getElementById('fbEl').innerHTML = '';
+function clearFb(){
+  $('fbEl').innerHTML = '';
   paused = false;
-  document.getElementById('hint').textContent = linkAlive() ? '繼續掃描下一個' : '離線模式：只顯示財產編號';
+  $('hint').textContent = remaining().length ? '繼續掃描下一個' : '🎉 全部完成！可以關閉了';
 }
 
-// =============================================================
-// 確認卡片
-// =============================================================
-function showConfirmCard(item) {
-  clearWatchdog();
+// ---------- 確認卡片 ----------
+function showConfirm(item){
   currentItem = item;
-  document.getElementById('fbEl').innerHTML = '';
+  $('fbEl').innerHTML = '';
 
-  var isAED = (item.name || '').toLowerCase().indexOf('aed') >= 0 || (item.name || '').indexOf('心臟') >= 0;
-  var isFire = (item.name || '').indexOf('火警') >= 0 || (item.name || '').indexOf('119') >= 0;
+  var nm = String(item.name||'');
+  var isAED  = nm.toLowerCase().indexOf('aed') >= 0 || nm.indexOf('心臟') >= 0;
+  var isFire = nm.indexOf('火警') >= 0 || nm.indexOf('119') >= 0;
   currentItem._loc = item.location || '';
-  currentItem._isAED = isAED;
-  currentItem._isFire = isFire;
+  currentItem._old = item.location || '';
+  currentItem._aed = isAED;
+  currentItem._fire = isFire;
 
-  var btns = locations.map(function (l) {
-    return '<button class="loc-btn' + (l === currentItem._loc ? ' active' : '') + '" onclick="pickLoc(this,\'' + l.replace(/'/g, "\\'") + '\')">' + l + '</button>';
+  var btns = locations.map(function(l){
+    return '<button class="loc-btn' + (l===currentItem._loc?' active':'') + '" onclick="pickLoc(this,\'' + l.replace(/'/g,"\\'") + '\')">' + esc(l) + '</button>';
   }).join('');
 
   var checks = '';
-  if (isAED) {
-    checks = '<div class="chk-box">' +
-      '<div class="chk-row"><input type="checkbox" id="ck1" onchange="updateOkBtn()"><label for="ck1">功能顯示正常</label></div>' +
-      '<div class="chk-row"><input type="checkbox" id="ck2" onchange="updateOkBtn()"><label for="ck2">貼片未過期</label></div></div>';
-  }
-  if (isFire) {
-    checks = '<div class="chk-box">' +
-      '<div class="chk-row"><input type="checkbox" id="ck1" onchange="updateOkBtn()"><label for="ck1">功能正常</label></div></div>';
-  }
+  if (isAED) checks = '<div class="chk-box">' +
+    '<div class="chk-row"><input type="checkbox" id="ck1" onchange="updateOk()"><label for="ck1">功能顯示正常</label></div>' +
+    '<div class="chk-row"><input type="checkbox" id="ck2" onchange="updateOk()"><label for="ck2">貼片未過期</label></div></div>';
+  if (isFire) checks = '<div class="chk-box">' +
+    '<div class="chk-row"><input type="checkbox" id="ck1" onchange="updateOk()"><label for="ck1">燈號／功能正常</label></div></div>';
 
-  document.getElementById('cardEl').innerHTML =
-    '<div class="card-wrap">' +
-    '<div class="card">' +
-      '<h3>' + item.name + '</h3>' +
-      '<div class="item-id">' + item.id + '</div>' +
+  $('cardEl').innerHTML =
+    '<div class="card-wrap"><div class="card">' +
+      '<h3>' + esc(item.name) + '</h3>' +
+      '<div class="item-id">' + esc(item.id) + '</div>' +
       '<div class="loc-label">位置 *必填</div>' +
       '<div class="loc-grid">' + btns + '</div>' +
-      '<input class="loc-input" id="locInput" placeholder="或手動輸入位置" value="' + (currentItem._loc || '') + '" oninput="typeLoc(this.value)">' +
+      '<input class="loc-input" id="locInput" placeholder="或手動輸入位置" value="' + esc(currentItem._loc) + '" oninput="typeLoc(this.value)">' +
       checks +
       '<div class="btn-row">' +
-        '<button class="btn-action btn-fault" onclick="goRepair()">✂ 故障</button>' +
+        '<button class="btn-action btn-fault" onclick="goRepair()">🔧 故障</button>' +
         '<button class="btn-action btn-ok" id="btnOk" onclick="doConfirm()">✓ 確認正常</button>' +
       '</div>' +
       '<button class="btn-cancel" onclick="doCancel()">取消</button>' +
     '</div></div>';
-
-  updateOkBtn();
+  updateOk();
 }
 
-function pickLoc(el, loc) {
+function pickLoc(el, loc){
   currentItem._loc = loc;
-  document.querySelectorAll('.loc-btn').forEach(function (b) { b.classList.remove('active'); });
+  document.querySelectorAll('.loc-btn').forEach(function(b){ b.classList.remove('active'); });
   el.classList.add('active');
-  var input = document.getElementById('locInput');
-  if (input) input.value = loc;
-  updateOkBtn();
+  if ($('locInput')) $('locInput').value = loc;
+  updateOk();
 }
-
-function typeLoc(v) {
+function typeLoc(v){
   if (!currentItem) return;
-  currentItem._loc = (v || '').trim();
-  document.querySelectorAll('.loc-btn').forEach(function (b) {
+  currentItem._loc = (v||'').trim();
+  document.querySelectorAll('.loc-btn').forEach(function(b){
     b.classList.toggle('active', b.textContent === currentItem._loc);
   });
-  updateOkBtn();
+  updateOk();
 }
-
-function updateOkBtn() {
+function updateOk(){
   if (!currentItem) return;
   var ok = !!currentItem._loc;
-  if (currentItem._isAED) {
-    var a = document.getElementById('ck1'), b = document.getElementById('ck2');
-    if (a && b) ok = ok && a.checked && b.checked;
-  }
-  if (currentItem._isFire) {
-    var c = document.getElementById('ck1');
-    if (c) ok = ok && c.checked;
-  }
-  var btn = document.getElementById('btnOk');
-  if (btn) btn.disabled = !ok;
+  if (currentItem._aed){ var a=$('ck1'), b=$('ck2'); if(a&&b) ok = ok && a.checked && b.checked; }
+  if (currentItem._fire){ var c=$('ck1'); if(c) ok = ok && c.checked; }
+  if ($('btnOk')) $('btnOk').disabled = !ok;
 }
 
-function doConfirm() {
+function doConfirm(){
   if (!currentItem || !currentItem._loc) return;
-  if (!linkAlive()) { showOfflineResult(currentItem.id); return; }
-  var btn = document.getElementById('btnOk');
+  var btn = $('btnOk');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> 上傳中';
-  sendToMain({ type: 'qr-confirm', itemId: currentItem.id, location: currentItem._loc });
-  armWatchdog('上傳沒有回應', currentItem.name + '（' + currentItem.id + '）可能尚未寫入');
+
+  var notes = [];
+  if (currentItem._aed)  notes.push('AED檢查:正常');
+  if (currentItem._fire) notes.push('火警檢查:正常');
+  if (FORCE_LATE) notes.push('(逾時補點)');
+
+  var it = currentItem;
+  gasPost({
+    action:'check', shift:SHIFT, userName:USER_NAME,
+    itemId:it.id, itemName:it.name,
+    location:it._loc, oldLocation:it._old,
+    note:notes.join(' '), forceLate:FORCE_LATE
+  }).then(function(res){
+    if (!res.success) { showFb('error','❌','上傳失敗', esc(res.message||''), 2600); return; }
+    doneIds[it.id] = true;
+    it.location = it._loc;
+    updateProgress();
+    if (res.isLate) showFb('warning','⚠️','已記錄（補點）', esc(it.name), 1800);
+    else showFb('success','✅','上傳成功', esc(it.name) + '　剩餘 ' + remaining().length + ' 項', 1500);
+  }).catch(function(err){
+    showFb('error','❌','網路異常', '請確認網路後重掃一次<br>' + esc(String(err)), 0,
+      '<button class="btn-retry" onclick="clearFb()">重新掃描</button>');
+  });
 }
 
-function doCancel() {
-  clearWatchdog();
-  document.getElementById('cardEl').innerHTML = '';
-  document.getElementById('fbEl').innerHTML = '';
+function doCancel(){
+  $('cardEl').innerHTML = '';
   currentItem = null;
   paused = false;
-  document.getElementById('hint').textContent = linkAlive() ? '繼續掃描下一個' : '離線模式：只顯示財產編號';
-  sendToMain({ type: 'qr-cancel' });
+  $('hint').textContent = '繼續掃描下一個';
 }
 
-// =============================================================
-// 報修
-// =============================================================
-function goRepair() {
-  document.getElementById('cardEl').innerHTML =
-    '<div class="card-wrap">' +
-    '<div class="repair-card">' +
-      '<h3>🔧 報修 — ' + currentItem.name + '</h3>' +
-      '<textarea class="repair-input" id="repairReason" rows="3" placeholder="請輸入故障原因..."></textarea>' +
-      '<button class="repair-btn" id="btnRepair" onclick="doRepair()">送出報修</button>' +
+// ---------- 報修 ----------
+function goRepair(){
+  $('cardEl').innerHTML =
+    '<div class="card-wrap"><div class="card">' +
+      '<h3 style="color:#E53935">🔧 故障報修</h3>' +
+      '<div class="item-id">' + esc(currentItem.name) + '　' + esc(currentItem.id) + '</div>' +
+      '<textarea class="repair-input" id="rr" rows="3" placeholder="請輸入具體故障原因…"></textarea>' +
+      '<button class="repair-btn" id="btnRr" onclick="doRepair()">送出報修</button>' +
       '<button class="btn-cancel" onclick="doCancel()">取消</button>' +
     '</div></div>';
 }
-
-function doRepair() {
-  var reason = document.getElementById('repairReason').value.trim();
+function doRepair(){
+  var reason = $('rr').value.trim();
   if (!reason) { alert('請填寫故障原因'); return; }
-  if (!linkAlive()) { alert('未連線主系統，無法送出報修'); return; }
-  var btn = document.getElementById('btnRepair');
+  var btn = $('btnRr');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> 送出中';
-  sendToMain({ type: 'qr-repair', itemId: currentItem.id, reason: reason });
-  armWatchdog('報修沒有回應', '請回主系統確認是否已建立報修紀錄');
+  var it = currentItem;
+  gasPost({ action:'repair', itemId:it.id, reason:reason, userName:USER_NAME })
+    .then(function(res){
+      if (res.duplicate) { showFb('warning','⚠️','已有報修紀錄', esc(res.message||''), 2600); return; }
+      if (!res.success)  { showFb('error','❌','報修失敗', esc(res.message||''), 2600); return; }
+      allItems = allItems.filter(function(x){ return x.id !== it.id; });
+      updateProgress();
+      showFb('success','🔧','已送出報修', esc(it.name), 1800);
+    })
+    .catch(function(err){
+      showFb('error','❌','網路異常', esc(String(err)), 0,
+        '<button class="btn-retry" onclick="clearFb()">返回掃描</button>');
+    });
 }
 
-// =============================================================
-// 與主頁面通訊
-// =============================================================
-function sendToMain(data) {
-  if (!linkAlive()) return false;
-  try { mainWindow.postMessage(data, '*'); return true; } catch (e) { return false; }
+// ---------- 待點清單（手動點班備援） ----------
+function showPendingList(){
+  paused = true;
+  var rest = remaining();
+  var groups = {};
+  rest.forEach(function(i){
+    var l = i.location || '未設定';
+    (groups[l] = groups[l] || []).push(i);
+  });
+
+  var html = '';
+  Object.keys(groups).forEach(function(loc){
+    html += '<div class="loc-group">📍 ' + esc(loc) + '（' + groups[loc].length + '）</div>';
+    groups[loc].forEach(function(i){
+      html += '<div class="list-row"><div><div class="list-name">' + esc(i.name) + '</div>' +
+              '<div class="list-id">' + esc(i.id) + '</div></div>' +
+              '<button class="btn-quick" onclick="manualPick(\'' + String(i.id).replace(/'/g,"\\'") + '\')">手動點班</button></div>';
+    });
+  });
+  if (!rest.length) html = '<div style="text-align:center;padding:40px 0;color:#4CAF50;font-weight:700">🎉 全部完成！</div>';
+
+  $('fbEl').innerHTML = '';
+  $('cardEl').innerHTML =
+    '<div class="card-wrap"><div class="card">' +
+      '<div class="list-head"><h3>📋 待點清單（' + rest.length + '）</h3>' +
+      '<button class="btn-quick" onclick="doCancel()">關閉</button></div>' +
+      html +
+    '</div></div>';
+}
+function manualPick(id){
+  var it = allItems.find(function(x){ return String(x.id) === String(id); });
+  if (!it) return;
+  if (!confirm('⚠️ 手動點班（未掃 QR Code）\n\n請確認您已實際檢查此物品：\n' + it.name + '\n\n是否繼續？')) return;
+  showConfirm(it);
 }
 
-window.addEventListener('message', function (e) {
-  if (!e.data || !e.data.type) return;
-  var d = e.data;
-  clearWatchdog();   // ★ 主系統有回應 → 解除逾時
-
-  if (d.type === 'scanner-init') {
-    if (Array.isArray(d.locations) && d.locations.length) locations = d.locations;
-  }
-
-  if (d.type === 'show-confirm') showConfirmCard(d.item);
-
-  if (d.type === 'scan-feedback') {
-    document.getElementById('cardEl').innerHTML = '';
-    var icons = { success: '✅', warning: '⚠️', error: '❌' };
-    showFeedback(d.status, icons[d.status] || 'ℹ️', d.message, d.sub || '', d.duration || 2000);
-    if (d.status === 'success') {
-      scanCount++;
-      document.getElementById('countBadge').textContent = '已掃 ' + scanCount;
-    }
-  }
-
-  if (d.type === 'scan-resume') clearFeedback();
-  if (d.type === 'close-scanner') closeSelf();
-});
-
-// =============================================================
-// 關閉
-// =============================================================
-function closeSelf() {
-  clearWatchdog();
-  try { if (scanner) scanner.stop(); } catch (e) {}
-  sendToMain({ type: 'qr-scanner-closed' });
+// ---------- 關閉 ----------
+function closeSelf(){
+  var rest = remaining().length;
+  if (rest > 0 && !confirm('還有 ' + rest + ' 項未點班，確定要離開嗎？')) return;
+  try { if (scanner) scanner.stop(); } catch(e){}
+  try { if (window.opener) window.opener.postMessage({ type:'qr-scanner-closed' }, '*'); } catch(e){}
   window.close();
-  setTimeout(function () {
+  setTimeout(function(){
     document.body.innerHTML =
       '<div style="padding:60px 24px;text-align:center;background:linear-gradient(160deg,#0d1117,#161b22);height:100vh;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">' +
-      '<div style="font-size:3.5rem;margin-bottom:16px">✅</div>' +
-      '<div style="font-size:1.15rem;font-weight:700">掃描完成</div>' +
-      '<div style="color:rgba(255,255,255,0.4);margin-top:10px;font-size:0.9rem">請手動關閉此分頁</div></div>';
-  }, 200);
+      '<div style="font-size:3.4rem;margin-bottom:14px">✅</div>' +
+      '<div style="font-size:1.1rem;font-weight:700">掃描結束</div>' +
+      '<div style="color:rgba(255,255,255,0.4);margin-top:10px;font-size:0.9rem">資料已寫入資料庫，請手動關閉此分頁</div></div>';
+  }, 250);
 }
 </script>
 </body>
