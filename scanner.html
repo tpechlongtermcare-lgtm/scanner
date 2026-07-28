@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>QR 掃描器 v3 - 興岩點班系統</title>
+<title>QR 掃描器 v4 - 興岩點班系統</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -26,7 +26,6 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 .laser{position:absolute;top:0;left:10%;right:10%;height:3px;background:linear-gradient(90deg,transparent,#4CAF50,transparent);animation:laserAni 2s ease-in-out infinite}
 @keyframes laserAni{0%{top:0}50%{top:calc(100% - 3px)}100%{top:0}}
 
-/* 進度條 */
 .prog-bar{position:fixed;top:calc(env(safe-area-inset-top,8px) + 44px);left:0;right:0;z-index:9;padding:0 14px}
 .prog-track{height:6px;background:rgba(255,255,255,0.18);border-radius:3px;overflow:hidden}
 .prog-fill{height:100%;background:linear-gradient(90deg,#4CAF50,#81C784);width:0%;transition:width .4s ease}
@@ -36,7 +35,6 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 .hint{font-size:0.85rem;color:rgba(255,255,255,0.55)}
 .btn-list{background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:9px 20px;border-radius:20px;font-size:0.85rem;font-weight:600;cursor:pointer;margin-top:8px}
 
-/* Feedback */
 .fb-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fbIn .2s ease;padding:24px}
 @keyframes fbIn{from{opacity:0;transform:scale(0.88)}to{opacity:1;transform:scale(1)}}
 .fb-overlay.success{background:rgba(46,125,50,0.94)}
@@ -48,9 +46,7 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 .fb-text{font-size:1.25rem;font-weight:700;margin-top:14px;text-align:center}
 .fb-sub{font-size:0.85rem;margin-top:8px;opacity:0.85;text-align:center;line-height:1.7}
 .btn-retry{background:#fff;color:#333;border:none;padding:13px 32px;border-radius:24px;font-weight:700;margin-top:20px;font-size:0.95rem;cursor:pointer}
-.btn-ghost{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:11px 26px;border-radius:24px;font-weight:600;margin-top:10px;font-size:0.85rem;cursor:pointer}
 
-/* Card */
 .card-wrap{position:fixed;top:0;left:0;right:0;bottom:0;z-index:25;background:rgba(0,0,0,0.55);display:flex;align-items:flex-end;justify-content:center}
 .card{background:#fff;color:#333;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:22px 20px env(safe-area-inset-bottom,20px);max-height:88vh;overflow-y:auto;animation:cardSlide .28s cubic-bezier(0.2,0.8,0.3,1)}
 @keyframes cardSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -76,12 +72,10 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 .spinner{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Repair */
 .repair-input{width:100%;padding:14px;border:2px solid #e0e0e0;border-radius:14px;font-size:1rem;margin-bottom:12px;resize:none;font-family:inherit}
 .repair-input:focus{outline:none;border-color:#E53935}
 .repair-btn{width:100%;padding:14px;border:none;border-radius:16px;font-size:1rem;font-weight:700;background:linear-gradient(135deg,#E53935,#C62828);color:#fff;cursor:pointer}
 
-/* 待點清單 */
 .list-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .list-head h3{font-size:1.05rem;font-weight:800}
 .loc-group{font-size:0.82rem;font-weight:800;color:#D4842A;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #eee}
@@ -90,7 +84,6 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 .list-id{font-size:0.72rem;color:#999;font-family:monospace}
 .btn-quick{background:#D4842A;color:#fff;border:none;padding:7px 14px;border-radius:16px;font-size:0.8rem;font-weight:700;white-space:nowrap;cursor:pointer}
 
-/* Start */
 .start-screen{position:fixed;inset:0;z-index:50;background:linear-gradient(160deg,#0d1117,#161b22,#1a2332);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .start-icon{font-size:4.6rem;margin-bottom:20px;animation:float 3s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
@@ -100,9 +93,10 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 .start-btn:disabled{background:linear-gradient(135deg,#78909C,#455A64);box-shadow:none}
 .start-btn:active{transform:scale(0.96)}
 .start-note{margin-top:18px;font-size:0.75rem;color:rgba(255,255,255,0.32);text-align:center;max-width:290px;line-height:1.8}
-.err-box{background:rgba(211,47,47,0.18);border:1px solid rgba(239,83,80,0.5);color:#EF9A9A;border-radius:14px;padding:14px 16px;font-size:0.8rem;line-height:1.9;max-width:330px;margin-bottom:22px;text-align:left}
+.err-box{background:rgba(211,47,47,0.18);border:1px solid rgba(239,83,80,0.5);color:#EF9A9A;border-radius:14px;padding:14px 16px;font-size:0.8rem;line-height:1.9;max-width:340px;margin-bottom:22px;text-align:left;word-break:break-all}
 .err-box b{color:#FFCDD2}
 .info-chip{background:rgba(255,255,255,0.08);border-radius:12px;padding:10px 18px;font-size:0.82rem;color:rgba(255,255,255,0.7);margin-bottom:22px;text-align:center;line-height:1.8}
+.diag-link{display:inline-block;margin-top:10px;color:#90CAF9;font-size:0.78rem;text-decoration:underline;word-break:break-all}
 </style>
 </head>
 <body>
@@ -136,7 +130,7 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 <div class="start-screen" id="startScreen">
   <div class="start-icon">📷</div>
   <div class="start-title">QR Code 掃描器</div>
-  <div class="start-sub" id="startSub">興岩點班系統 v3</div>
+  <div class="start-sub" id="startSub">興岩點班系統 v4（JSONP）</div>
   <div id="errBox"></div>
   <div id="infoChip"></div>
   <button class="start-btn" id="startBtn" disabled>載入中…</button>
@@ -145,8 +139,7 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 
 <script>
 // ==============================================================
-// v3：直連 GAS，不依賴主分頁（window.opener 不再是必要條件）
-// URL 參數：?gas=<GAS exec 網址>&t=<token>&u=<姓名>&s=<班別>&locs=[...]
+// v4：全部改用 JSONP（<script> 標籤載入），完全不受 CORS 限制
 // ==============================================================
 var Q = new URLSearchParams(location.search);
 var GAS_URL   = Q.get('gas') || '';
@@ -161,15 +154,12 @@ var locations = (function(){
   return DEFAULT_LOCS.slice();
 })();
 
-var allItems = [];      // 護理組、非故障
-var doneIds  = {};      // 已完成
-var scanner  = null;
-var paused   = true;
-var currentItem = null;
+var allItems = [], doneIds = {}, scanner = null, paused = true, currentItem = null;
+var jsonpSeq = 0;
 
-// ---------- 小工具 ----------
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
 function beep(){
   try{ navigator.vibrate && navigator.vibrate([50,30,50]); }catch(e){}
   try{
@@ -183,30 +173,62 @@ function beep(){
   }catch(e){}
 }
 
-// ---------- 與 GAS 溝通 ----------
-function gasGet(action, extra){
-  var u = GAS_URL + (GAS_URL.indexOf('?')<0?'?':'&') + 'action=' + action + '&token=' + encodeURIComponent(TOKEN);
-  if (extra) { for (var k in extra) u += '&' + k + '=' + encodeURIComponent(extra[k]); }
-  return fetch(u, { method:'GET', redirect:'follow' }).then(function(r){ return r.json(); });
-}
-function gasPost(payload){
-  payload.token = TOKEN;
-  return fetch(GAS_URL, {
-    method: 'POST',
-    redirect: 'follow',
-    body: JSON.stringify(payload)   // 不設 headers → 簡單請求，避開 CORS 預檢
-  }).then(function(r){ return r.json(); });
+// ---------- JSONP 核心 ----------
+function jsonp(params, timeoutMs){
+  return new Promise(function(resolve, reject){
+    var cbName = 'xyCb' + (++jsonpSeq) + '_' + Date.now();
+    var script = document.createElement('script');
+    var done = false;
+
+    var timer = setTimeout(function(){
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error('連線逾時（15 秒無回應）'));
+    }, timeoutMs || 15000);
+
+    function cleanup(){
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch(e){ window[cbName] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cbName] = function(data){
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(data);
+    };
+
+    var qs = ['token=' + encodeURIComponent(TOKEN), 'callback=' + cbName];
+    for (var k in params) {
+      if (params[k] !== undefined && params[k] !== null) {
+        qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+      }
+    }
+
+    script.src = GAS_URL + (GAS_URL.indexOf('?') < 0 ? '?' : '&') + qs.join('&');
+    script.onerror = function(){
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error('無法載入 API（網址錯誤或部署權限未開放）'));
+    };
+    document.head.appendChild(script);
+  });
 }
 
-// ---------- 啟動流程 ----------
+// ---------- 啟動 ----------
 $('btnClose').addEventListener('click', closeSelf);
 $('btnList').addEventListener('click', showPendingList);
-$('btnStart');
 $('startBtn').addEventListener('click', startCamera);
 
-function fail(html, note){
+function fail(html, note, showDiag){
   $('errBox').className = 'err-box';
-  $('errBox').innerHTML = html;
+  $('errBox').innerHTML = html + (showDiag && GAS_URL ?
+    '<br><br><b>自我診斷：</b>請用瀏覽器直接開啟下面網址，看是否回傳 JSON：' +
+    '<a class="diag-link" href="' + esc(GAS_URL) + '?action=ping&token=' + encodeURIComponent(TOKEN) + '" target="_blank">點此測試 API</a>'
+    : '');
   $('startBtn').textContent = '重新載入';
   $('startBtn').disabled = false;
   $('startBtn').onclick = function(){ location.reload(); };
@@ -216,36 +238,43 @@ function fail(html, note){
 function boot(){
   if (!GAS_URL || !TOKEN || !USER_NAME || !SHIFT) {
     fail('<b>⚠️ 缺少啟動參數</b><br>這一頁必須從主系統開啟。<br><br>' +
-         '請回到「興岩點班系統」→ 選擇班別 → 按「啟動掃描」。<br><br>' +
-         '（不要用書籤／歷史紀錄直接開這一頁）', '');
+         '請回到「興岩點班系統」→ 選擇班別 → 按「啟動掃描」。', '');
+    return;
+  }
+  if (GAS_URL.indexOf('PASTE_YOUR') >= 0 || GAS_URL.indexOf('/exec') < 0) {
+    fail('<b>⚠️ GAS 網址設定錯誤</b><br>目前收到：<br>' + esc(GAS_URL) + '<br><br>' +
+         '請在主系統 Index.html 的 <b>GAS_EXEC_URL</b> 填入正確的 /exec 部署網址。', '請聯繫系統管理者（鄭瑞賢）');
     return;
   }
 
   $('titleBar').textContent = '📷 ' + SHIFT + '班 · ' + USER_NAME;
 
-  Promise.all([ gasGet('items'), gasGet('checked', { shift: SHIFT }) ])
+  Promise.all([ jsonp({ action:'items' }), jsonp({ action:'checked', shift: SHIFT }) ])
     .then(function(res){
       var r1 = res[0], r2 = res[1];
-      if (!r1.success) { fail('<b>⚠️ 讀取物品清單失敗</b><br>' + esc(r1.message||''), ''); return; }
-
+      if (!r1 || !r1.success) {
+        fail('<b>⚠️ API 回應錯誤</b><br>' + esc((r1 && r1.message) || '未知錯誤'), '', true);
+        return;
+      }
       allItems = (r1.items||[]).filter(function(i){
         return i.category === '護理組' &&
                String(i.status||'').indexOf('故障') < 0 &&
                String(i.status||'').indexOf('送修') < 0;
       });
-      (r2.ids||[]).forEach(function(id){ doneIds[String(id)] = true; });
+      ((r2 && r2.ids)||[]).forEach(function(id){ doneIds[String(id)] = true; });
 
       updateProgress();
       $('infoChip').className = 'info-chip';
       $('infoChip').innerHTML = '✓ 已連線資料庫<br>共 ' + allItems.length + ' 項，已完成 ' + doneCount() + ' 項';
       $('startBtn').disabled = false;
       $('startBtn').textContent = '▶ 啟動掃描';
-      $('startNote').textContent = '掃描結果會直接寫入資料庫，不需要保持主系統分頁開著。';
+      $('startNote').textContent = '掃描結果直接寫入資料庫，不需保持主系統分頁開著。';
     })
     .catch(function(err){
-      fail('<b>⚠️ 無法連線資料庫</b><br>' + esc(String(err)) + '<br><br>' +
-           '可能原因：<br>1. GAS 部署權限不是「所有人」<br>2. 網路不穩<br>3. token 設定不一致',
-           '請聯繫系統管理者（鄭瑞賢）');
+      fail('<b>⚠️ 無法連線資料庫</b><br>' + esc(String(err.message||err)) + '<br><br>' +
+           '請檢查：<br>1. GAS 部署權限是否為「<b>任何人</b>」<br>' +
+           '2. 是否已建立「<b>新版本</b>」部署<br>3. token 是否兩邊一致',
+           '請聯繫系統管理者（鄭瑞賢）', true);
     });
 }
 boot();
@@ -273,8 +302,7 @@ function startCamera(){
   scanner.start(
     { facingMode: 'environment' },
     { fps:10, qrbox:{ width:250, height:250 }, aspectRatio:1.0 },
-    onScan,
-    function(){}
+    onScan, function(){}
   ).catch(function(err){
     $('scanFrame').style.display='none';
     $('reader').innerHTML =
@@ -293,15 +321,8 @@ function onScan(text){
   paused = true;
   beep();
   var item = allItems.find(function(i){ return String(i.id) === String(text); });
-
-  if (!item) {
-    showFb('error','❌','查無此財產編號', esc(text) + '<br>可能不在點班清單，或已報修中', 2200);
-    return;
-  }
-  if (doneIds[item.id]) {
-    showFb('warning','✅','已完成點班', esc(item.name), 1600);
-    return;
-  }
+  if (!item) { showFb('error','❌','查無此財產編號', esc(text) + '<br>可能不在點班清單，或已報修中', 2200); return; }
+  if (doneIds[item.id]) { showFb('warning','✅','已完成點班', esc(item.name), 1600); return; }
   showConfirm(item);
 }
 
@@ -309,11 +330,9 @@ function onScan(text){
 function showFb(cls, icon, text, sub, ms, extra){
   $('cardEl').innerHTML = '';
   $('fbEl').innerHTML =
-    '<div class="fb-overlay ' + cls + '">' +
-    '<div class="fb-icon">' + icon + '</div>' +
+    '<div class="fb-overlay ' + cls + '"><div class="fb-icon">' + icon + '</div>' +
     '<div class="fb-text">' + text + '</div>' +
-    (sub ? '<div class="fb-sub">' + sub + '</div>' : '') +
-    (extra || '') + '</div>';
+    (sub ? '<div class="fb-sub">' + sub + '</div>' : '') + (extra||'') + '</div>';
   if (ms > 0) setTimeout(clearFb, ms);
 }
 function clearFb(){
@@ -331,7 +350,6 @@ function showConfirm(item){
   var isAED  = nm.toLowerCase().indexOf('aed') >= 0 || nm.indexOf('心臟') >= 0;
   var isFire = nm.indexOf('火警') >= 0 || nm.indexOf('119') >= 0;
   currentItem._loc = item.location || '';
-  currentItem._old = item.location || '';
   currentItem._aed = isAED;
   currentItem._fire = isFire;
 
@@ -398,26 +416,27 @@ function doConfirm(){
   if (FORCE_LATE) notes.push('(逾時補點)');
 
   var it = currentItem;
-  gasPost({
+  jsonp({
     action:'check', shift:SHIFT, userName:USER_NAME,
-    itemId:it.id, itemName:it.name,
-    location:it._loc, oldLocation:it._old,
-    note:notes.join(' '), forceLate:FORCE_LATE
-  }).then(function(res){
-    if (!res.success) { showFb('error','❌','上傳失敗', esc(res.message||''), 2600); return; }
+    itemId:it.id, location:it._loc,
+    note:notes.join(' '), forceLate: FORCE_LATE ? 'true' : 'false'
+  }, 25000).then(function(res){
+    if (!res || !res.success) { showFb('error','❌','上傳失敗', esc((res&&res.message)||''), 2600); return; }
     doneIds[it.id] = true;
     it.location = it._loc;
     updateProgress();
-    if (res.isLate) showFb('warning','⚠️','已記錄（補點）', esc(it.name), 1800);
+    if (res.duplicate) showFb('warning','✅','已完成過', esc(it.name), 1500);
+    else if (res.isLate) showFb('warning','⚠️','已記錄（補點）', esc(it.name), 1800);
     else showFb('success','✅','上傳成功', esc(it.name) + '　剩餘 ' + remaining().length + ' 項', 1500);
   }).catch(function(err){
-    showFb('error','❌','網路異常', '請確認網路後重掃一次<br>' + esc(String(err)), 0,
+    showFb('error','❌','網路異常', esc(String(err.message||err)) + '<br>請確認網路後重掃一次', 0,
       '<button class="btn-retry" onclick="clearFb()">重新掃描</button>');
   });
 }
 
 function doCancel(){
   $('cardEl').innerHTML = '';
+  $('fbEl').innerHTML = '';
   currentItem = null;
   paused = false;
   $('hint').textContent = '繼續掃描下一個';
@@ -441,25 +460,24 @@ function doRepair(){
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> 送出中';
   var it = currentItem;
-  gasPost({ action:'repair', itemId:it.id, reason:reason, userName:USER_NAME })
+  jsonp({ action:'repair', itemId:it.id, reason:reason, userName:USER_NAME }, 25000)
     .then(function(res){
-      if (res.duplicate) { showFb('warning','⚠️','已有報修紀錄', esc(res.message||''), 2600); return; }
-      if (!res.success)  { showFb('error','❌','報修失敗', esc(res.message||''), 2600); return; }
+      if (res && res.duplicate) { showFb('warning','⚠️','已有報修紀錄', esc(res.message||''), 2600); return; }
+      if (!res || !res.success)  { showFb('error','❌','報修失敗', esc((res&&res.message)||''), 2600); return; }
       allItems = allItems.filter(function(x){ return x.id !== it.id; });
       updateProgress();
       showFb('success','🔧','已送出報修', esc(it.name), 1800);
     })
     .catch(function(err){
-      showFb('error','❌','網路異常', esc(String(err)), 0,
+      showFb('error','❌','網路異常', esc(String(err.message||err)), 0,
         '<button class="btn-retry" onclick="clearFb()">返回掃描</button>');
     });
 }
 
-// ---------- 待點清單（手動點班備援） ----------
+// ---------- 待點清單 ----------
 function showPendingList(){
   paused = true;
-  var rest = remaining();
-  var groups = {};
+  var rest = remaining(), groups = {};
   rest.forEach(function(i){
     var l = i.location || '未設定';
     (groups[l] = groups[l] || []).push(i);
@@ -480,8 +498,7 @@ function showPendingList(){
   $('cardEl').innerHTML =
     '<div class="card-wrap"><div class="card">' +
       '<div class="list-head"><h3>📋 待點清單（' + rest.length + '）</h3>' +
-      '<button class="btn-quick" onclick="doCancel()">關閉</button></div>' +
-      html +
+      '<button class="btn-quick" onclick="doCancel()">關閉</button></div>' + html +
     '</div></div>';
 }
 function manualPick(id){
