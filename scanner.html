@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>QR 掃描器 v6 - 興岩點班系統</title>
+<title>QR 掃描器 v7 - 興岩點班系統</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -100,6 +100,16 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 .badge-fail{background:rgba(239,83,80,0.3);color:#EF9A9A;padding:3px 10px;border-radius:12px;font-size:0.72rem;white-space:nowrap;margin-left:4px;cursor:pointer}
 .chan{display:inline-block;background:rgba(76,175,80,0.22);color:#A5D6A7;border-radius:8px;padding:2px 10px;font-size:0.72rem;margin-top:6px}
 .log-box{background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px;font-size:0.68rem;color:rgba(255,255,255,0.5);max-width:340px;margin-bottom:18px;line-height:1.9;font-family:monospace;word-break:break-all}
+.st-badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:0.8rem;font-weight:700;margin:0 auto 12px}
+.st-fault{background:#FFEBEE;color:#C62828}
+.st-fixing{background:#E3F2FD;color:#1565C0}
+.st-ok{background:#E8F5E9;color:#2E7D32}
+.note-box{background:#FFF8E1;border:1px solid #FFE082;border-radius:12px;padding:10px 12px;font-size:0.82rem;color:#8D6E00;line-height:1.7;margin-bottom:12px}
+.date-input{width:100%;padding:13px;border:2px solid #e0e0e0;border-radius:14px;font-size:1rem;font-family:inherit;text-align:center;font-weight:600;margin-bottom:4px}
+.date-input:focus{outline:none;border-color:#2E7D32}
+.btn-fix{background:linear-gradient(135deg,#1976D2,#1565C0);color:#fff}
+.btn-back{background:linear-gradient(135deg,#43A047,#2E7D32);color:#fff}
+.step-hint{font-size:0.78rem;color:#888;text-align:center;margin-bottom:10px;line-height:1.7}
 .diag-link{display:inline-block;margin-top:8px;color:#90CAF9;font-size:0.76rem;text-decoration:underline}
 </style>
 </head>
@@ -136,7 +146,7 @@ body{background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','No
 <div class="start-screen" id="startScreen">
   <div class="start-icon">📷</div>
   <div class="start-title">QR Code 掃描器</div>
-  <div class="start-sub" id="startSub">興岩點班系統 v6</div>
+  <div class="start-sub" id="startSub">興岩點班系統 v7</div>
   <div id="errBox"></div>
   <div id="infoChip"></div>
   <div id="logBox"></div>
@@ -157,6 +167,8 @@ var TOKEN     = Q.get('t')   || '';
 var USER_NAME = Q.get('u')   || '';
 var SHIFT     = Q.get('s')   || '';
 var FORCE_LATE= Q.get('late') === '1';
+var MODE      = (Q.get('m') || 'check').toLowerCase();   // check | repair
+var IS_REPAIR = (MODE === 'repair');
 
 var DEFAULT_LOCS = ['護理站','A區','B區','大廳','庫房','治療室','會議室','辦公室'];
 var locations = (function(){
@@ -295,7 +307,7 @@ function pickChannel(){
 }
 
 function boot(){
-  if (!GAS_URL || !TOKEN || !USER_NAME || !SHIFT) {
+  if (!GAS_URL || !TOKEN || !USER_NAME || (!IS_REPAIR && !SHIFT)) {
     fail('<b>⚠️ 缺少啟動參數</b><br>這一頁必須從主系統開啟。<br><br>' +
          '請回到「興岩點班系統」→ 選擇班別 → 按「啟動掃描」。', '');
     return;
@@ -306,31 +318,48 @@ function boot(){
     return;
   }
 
-  $('titleBar').textContent = '📷 ' + SHIFT + '班 · ' + USER_NAME;
+  $('titleBar').textContent = IS_REPAIR
+    ? '🔧 維修處理 · ' + USER_NAME
+    : '📷 ' + SHIFT + '班 · ' + USER_NAME;
+  if (IS_REPAIR) {
+    $('startSub').innerHTML = '興岩點班系統 v7<br>維修處理模式（不需選班別）';
+    $('btnList').textContent = '🔧 待處理清單';
+  }
 
   pickChannel()
     .then(function(){
       $('startNote').textContent = '載入物品清單…';
+      if (IS_REPAIR) return Promise.all([ api({ action:'items' }) ]);
       return Promise.all([ api({ action:'items' }), api({ action:'checked', shift: SHIFT }) ]);
     })
     .then(function(res){
       var r1 = res[0], r2 = res[1];
       if (!r1 || !r1.success) throw new Error((r1 && r1.message) || '物品清單讀取失敗');
 
-      allItems = (r1.items||[]).filter(function(i){
-        return i.category === '護理組' &&
-               String(i.status||'').indexOf('故障') < 0 &&
-               String(i.status||'').indexOf('送修') < 0;
-      });
-      ((r2 && r2.ids)||[]).forEach(function(id){ doneIds[String(id)] = true; });
+      if (IS_REPAIR) {
+        // 維修模式：全部物品都要能掃到（含故障／送修中）
+        allItems = (r1.items || []);
+      } else {
+        allItems = (r1.items||[]).filter(function(i){
+          return i.category === '護理組' &&
+                 String(i.status||'').indexOf('故障') < 0 &&
+                 String(i.status||'').indexOf('送修') < 0;
+        });
+        ((r2 && r2.ids)||[]).forEach(function(id){ doneIds[String(id)] = true; });
+      }
 
       updateProgress();
       $('infoChip').className = 'info-chip';
-      $('infoChip').innerHTML = '✓ 已連線資料庫<br>共 ' + allItems.length + ' 項，已完成 ' + doneCount() + ' 項' +
-        '<br><span class="chan">通道：' + (CHANNEL === 'fetch' ? 'A · fetch' : 'B · JSONP') + '</span>';
+      $('infoChip').innerHTML = IS_REPAIR
+        ? '✓ 已連線資料庫<br>待處理維修：' + pendingRepairs().length + ' 項' +
+          '<br><span class="chan">通道：' + (CHANNEL === 'fetch' ? 'A · fetch' : 'B · JSONP') + '</span>'
+        : '✓ 已連線資料庫<br>共 ' + allItems.length + ' 項，已完成 ' + doneCount() + ' 項' +
+          '<br><span class="chan">通道：' + (CHANNEL === 'fetch' ? 'A · fetch' : 'B · JSONP') + '</span>';
       $('startBtn').disabled = false;
       $('startBtn').textContent = '▶ 啟動掃描';
-      $('startNote').textContent = '掃描結果直接寫入資料庫，不需保持主系統分頁開著。';
+      $('startNote').textContent = IS_REPAIR
+        ? '掃描故障品 → 轉送修中；掃描送修中 → 賦歸正常。'
+        : '掃描結果直接寫入資料庫，不需保持主系統分頁開著。';
     })
     .catch(function(err){
       fail('<b>⚠️ 無法連線資料庫</b><br>' + esc(String(err.message||err)) + '<br><br>' +
@@ -344,7 +373,22 @@ boot();
 // ---------- 進度 ----------
 function doneCount(){ return allItems.filter(function(i){ return doneIds[i.id]; }).length; }
 function remaining(){ return allItems.filter(function(i){ return !doneIds[i.id]; }); }
+
+/** 維修模式：非「正常」狀態的物品 */
+function pendingRepairs(){
+  return allItems.filter(function(i){ return String(i.status||'正常') !== '正常'; });
+}
+
+var repairHandled = 0;
+
 function updateProgress(){
+  if (IS_REPAIR) {
+    var pend = pendingRepairs().length;
+    $('countBadge').textContent = '待處理 ' + pend;
+    $('progFill').style.width = '100%';
+    $('progText').textContent = '本次已處理 ' + repairHandled + ' 項　尚待處理 ' + pend + ' 項';
+    return;
+  }
   var d = doneCount(), t = allItems.length;
   $('countBadge').textContent = d + ' / ' + t;
   var pct = t ? Math.round(d/t*100) : 0;
@@ -383,9 +427,101 @@ function onScan(text){
   paused = true;
   beep();
   var item = allItems.find(function(i){ return String(i.id) === String(text); });
-  if (!item) { showFb('error','❌','查無此財產編號', esc(text) + '<br>可能不在點班清單，或已報修中', 2200); return; }
+  if (!item) { showFb('error','❌','查無此財產編號', esc(text), 2200); return; }
+
+  if (IS_REPAIR) { showRepairFlow(item); return; }
+
   if (doneIds[item.id]) { showFb('warning','✅','已完成點班', esc(item.name), 1600); return; }
   showConfirm(item);
+}
+
+// ==============================================================
+// 維修處理流程（書記用，不需班別）
+//   故障／故障送修  → 轉「送修中」
+//   送修中          → 填修復日期 → 賦歸「正常」
+// ==============================================================
+function showRepairFlow(item){
+  currentItem = item;
+  $('fbEl').innerHTML = '';
+  var st = String(item.status || '正常');
+
+  if (st === '正常') {
+    showFb('warning','ℹ️','狀態正常', esc(item.name) + '<br>此物品無需維修處理', 2000);
+    return;
+  }
+
+  if (st === '送修中') {
+    var today = new Date().toISOString().slice(0,10);
+    $('cardEl').innerHTML =
+      '<div class="card-wrap"><div class="card">' +
+        '<h3>' + esc(item.name) + '</h3>' +
+        '<div class="item-id">' + esc(item.id) + '</div>' +
+        '<div style="text-align:center"><span class="st-badge st-fixing">目前：送修中</span></div>' +
+        (item.repairNote ? '<div class="note-box"><b>故障原因</b><br>' + esc(item.repairNote) + '</div>' : '') +
+        '<div class="step-hint">確認機台已修復並歸還後，<br>填寫修復完成日期即可賦歸。</div>' +
+        '<label style="font-size:0.82rem;font-weight:700;color:#2E7D32">修復完成日期</label>' +
+        '<input type="date" class="date-input" id="fixDate" value="' + today + '">' +
+        '<div class="btn-row">' +
+          '<button class="btn-action btn-back" id="btnDo" onclick="doRestore()">✅ 賦歸正常</button>' +
+        '</div>' +
+        '<button class="btn-cancel" onclick="doCancel()">取消</button>' +
+      '</div></div>';
+    return;
+  }
+
+  // 故障 / 故障送修
+  $('cardEl').innerHTML =
+    '<div class="card-wrap"><div class="card">' +
+      '<h3>' + esc(item.name) + '</h3>' +
+      '<div class="item-id">' + esc(item.id) + '</div>' +
+      '<div style="text-align:center"><span class="st-badge st-fault">目前：' + esc(st) + '</span></div>' +
+      (item.repairNote ? '<div class="note-box"><b>故障原因</b><br>' + esc(item.repairNote) + '</div>' : '') +
+      '<div class="step-hint">已收到此故障機台、準備送外維修？<br>確認後狀態將轉為「送修中」。</div>' +
+      '<div class="btn-row">' +
+        '<button class="btn-action btn-fix" id="btnDo" onclick="doSetFixing()">🔧 轉為送修中</button>' +
+      '</div>' +
+      '<button class="btn-cancel" onclick="doCancel()">取消</button>' +
+    '</div></div>';
+}
+
+function doSetFixing(){
+  var it = currentItem;
+  var btn = $('btnDo');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 處理中';
+
+  api({ action:'setstatus', itemId: it.id, status: '送修中' }, 30000).then(function(res){
+    if (!res || !res.success) { showFb('error','❌','更新失敗', esc((res&&res.message)||''), 2600); return; }
+    it.status = '送修中';
+    repairHandled++;
+    updateProgress();
+    showFb('success','🔧','已轉送修中', esc(it.name), 1600);
+  }).catch(function(err){
+    showFb('error','❌','網路異常', esc(String(err.message||err)), 0,
+      '<button class="btn-retry" onclick="clearFb()">返回掃描</button>');
+  });
+}
+
+function doRestore(){
+  var it = currentItem;
+  var d = $('fixDate').value;
+  if (!d) { alert('請選擇修復完成日期'); return; }
+
+  var btn = $('btnDo');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 處理中';
+
+  api({ action:'restore', itemId: it.id, finishDate: d }, 30000).then(function(res){
+    if (!res || !res.success) { showFb('error','❌','賦歸失敗', esc((res&&res.message)||''), 2600); return; }
+    it.status = '正常';
+    it.repairNote = '';
+    repairHandled++;
+    updateProgress();
+    showFb('success','✅','已賦歸正常', esc(it.name) + '<br>已納回點班清單', 1800);
+  }).catch(function(err){
+    showFb('error','❌','網路異常', esc(String(err.message||err)), 0,
+      '<button class="btn-retry" onclick="clearFb()">返回掃描</button>');
+  });
 }
 
 // ---------- 回饋 ----------
@@ -400,7 +536,9 @@ function showFb(cls, icon, text, sub, ms, extra){
 function clearFb(){
   $('fbEl').innerHTML = '';
   paused = false;
-  $('hint').textContent = remaining().length ? '繼續掃描下一個' : '🎉 全部完成！可以關閉了';
+  $('hint').textContent = IS_REPAIR
+    ? (pendingRepairs().length ? '繼續掃描下一台' : '🎉 維修項目已全部處理完')
+    : (remaining().length ? '繼續掃描下一個' : '🎉 全部完成！可以關閉了');
 }
 
 // ---------- 確認卡片 ----------
@@ -582,6 +720,9 @@ function doRepair(){
 // ---------- 待點清單 ----------
 function showPendingList(){
   paused = true;
+
+  if (IS_REPAIR) { showRepairList(); return; }
+
   var rest = remaining(), groups = {};
   rest.forEach(function(i){
     var l = i.location || '未設定';
@@ -606,6 +747,48 @@ function showPendingList(){
       '<button class="btn-quick" onclick="doCancel()">關閉</button></div>' + html +
     '</div></div>';
 }
+function showRepairList(){
+  var list = pendingRepairs();
+  var html = '';
+
+  if (!list.length) {
+    html = '<div style="text-align:center;padding:40px 0;color:#4CAF50;font-weight:700">🎉 目前無待處理維修</div>';
+  } else {
+    var fault = list.filter(function(i){ return String(i.status).indexOf('送修中') < 0; });
+    var fixing = list.filter(function(i){ return String(i.status) === '送修中'; });
+
+    if (fault.length) {
+      html += '<div class="loc-group">🔴 待收件（故障）（' + fault.length + '）</div>';
+      fault.forEach(function(i){
+        html += '<div class="list-row"><div><div class="list-name">' + esc(i.name) + '</div>' +
+                '<div class="list-id">' + esc(i.id) + '　' + esc(i.location||'') + '</div></div>' +
+                '<button class="btn-quick" style="background:#1565C0" onclick="pickRepair(\'' + String(i.id).replace(/'/g,"\\'") + '\')">處理</button></div>';
+      });
+    }
+    if (fixing.length) {
+      html += '<div class="loc-group">🔵 送修中（待賦歸）（' + fixing.length + '）</div>';
+      fixing.forEach(function(i){
+        html += '<div class="list-row"><div><div class="list-name">' + esc(i.name) + '</div>' +
+                '<div class="list-id">' + esc(i.id) + '　' + esc(i.location||'') + '</div></div>' +
+                '<button class="btn-quick" style="background:#2E7D32" onclick="pickRepair(\'' + String(i.id).replace(/'/g,"\\'") + '\')">賦歸</button></div>';
+      });
+    }
+  }
+
+  $('fbEl').innerHTML = '';
+  $('cardEl').innerHTML =
+    '<div class="card-wrap"><div class="card">' +
+      '<div class="list-head"><h3>🔧 待處理維修（' + list.length + '）</h3>' +
+      '<button class="btn-quick" onclick="doCancel()">關閉</button></div>' + html +
+    '</div></div>';
+}
+
+function pickRepair(id){
+  var it = allItems.find(function(x){ return String(x.id) === String(id); });
+  if (!it) return;
+  showRepairFlow(it);
+}
+
 function manualPick(id){
   var it = allItems.find(function(x){ return String(x.id) === String(id); });
   if (!it) return;
@@ -630,8 +813,10 @@ function closeSelf(){
   if (failedJobs.length > 0) {
     if (!confirm('有 ' + failedJobs.length + ' 筆上傳失敗尚未重試！\n\n離開後這些項目不會被記錄。\n\n仍要離開嗎？')) return;
   }
-  var rest = remaining().length;
-  if (rest > 0 && !confirm('還有 ' + rest + ' 項未點班，確定要離開嗎？')) return;
+  if (!IS_REPAIR) {
+    var rest = remaining().length;
+    if (rest > 0 && !confirm('還有 ' + rest + ' 項未點班，確定要離開嗎？')) return;
+  }
   try { if (scanner) scanner.stop(); } catch(e){}
   try { if (window.opener) window.opener.postMessage({ type:'qr-scanner-closed' }, '*'); } catch(e){}
   window.close();
